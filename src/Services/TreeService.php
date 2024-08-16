@@ -18,15 +18,20 @@ readonly class TreeService
 
     public function fromConnectionGraph(ArticulationVertexesAggregate $articulationVertexesAggregate): Tree
     {
+        $directionGraph = $this->graphService->graphToDirection($articulationVertexesAggregate->graph);
+
         if ($articulationVertexesAggregate->articulationVertexes === []) {
-            return new Tree($articulationVertexesAggregate->graph, [$articulationVertexesAggregate->graph]);
+            return new Tree(
+                $articulationVertexesAggregate->graph,
+                [$directionGraph],
+            );
         }
 
         $articulationVertexes = $articulationVertexesAggregate->articulationVertexes;
         $result = [];
         $this->split($articulationVertexes, new Canvas($articulationVertexesAggregate->graph), $result);
         $branches = array_map(
-            fn (array $vertexes) => $this->graphService->createSubGraph($articulationVertexesAggregate->graph, $vertexes),
+            fn (array $vertexes) => $this->graphService->createSubGraph($directionGraph, $vertexes),
             $result,
         );
         $connections = [];

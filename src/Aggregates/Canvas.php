@@ -4,13 +4,13 @@ declare(strict_types = 1);
 
 namespace EugeneErg\Graphs\Aggregates;
 
-use EugeneErg\Graphs\ValueObjects\Graph;
+use EugeneErg\Graphs\ValueObjects\GraphInterface;
 
 final class Canvas
 {
     private array $pixels = [];
 
-    public function __construct(public readonly Graph $graph)
+    public function __construct(public readonly GraphInterface $graph)
     {
     }
 

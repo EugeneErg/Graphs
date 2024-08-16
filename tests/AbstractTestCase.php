@@ -5,9 +5,11 @@ declare(strict_types = 1);
 namespace Tests;
 
 use EugeneErg\Graphs\Services\CanvasService;
+use EugeneErg\Graphs\Services\EdgeService;
 use EugeneErg\Graphs\Services\GraphService;
+use EugeneErg\Graphs\Services\IntersectionService;
 use EugeneErg\Graphs\Services\TreeService;
-use EugeneErg\Graphs\ValueObjects\Graph;
+use EugeneErg\Graphs\ValueObjects\GraphInterface;
 use PHPUnit\Framework\TestCase;
 
 abstract class AbstractTestCase extends TestCase
@@ -120,13 +122,13 @@ abstract class AbstractTestCase extends TestCase
         return $result;
     }
 
-    protected static function graphToMatrix(Graph $graph): array
+    protected static function graphToMatrix(GraphInterface $graph): array
     {
         $sizes = [];
         $maxSize = 0;
         $row = [' '];
 
-        $vertexes = $graph->vertexes;
+        $vertexes = $graph->getVertexes();
         sort($vertexes);
 
         foreach ($vertexes as $vertex) {
@@ -143,7 +145,7 @@ abstract class AbstractTestCase extends TestCase
             $row = [str_pad((string) $vertexA, $maxSize)];
 
             foreach ($vertexes as $pos => $vertexB) {
-                $row[] = str_pad(isset($graph->connections[$vertexA][$vertexB]) ? '*' : '', $sizes[$pos]);
+                $row[] = str_pad($graph->hasConnection($vertexA, $vertexB) ? $graph->getValue($vertexA, $vertexB) : '', $sizes[$pos]);
             }
 
             $result[] = implode('|', $row);
@@ -159,5 +161,24 @@ abstract class AbstractTestCase extends TestCase
         });
 
         return $list;
+    }
+
+    protected function getIntersectService(?CanvasService $canvasService = null,): IntersectionService
+    {
+        return new IntersectionService($canvasService ?? $this->getCanvasService());
+    }
+
+    protected function getEdgeService(
+        ?CanvasService $canvasService = null,
+        ?IntersectionService $intersectionService = null,
+        ?GraphService $graphService = null,
+    ): EdgeService {
+        $canvasService ??= $this->getCanvasService();
+
+        return new EdgeService(
+            $canvasService,
+            $intersectionService ?? $this->getIntersectService($canvasService),
+            $graphService ?? $this->getGraphService($canvasService),
+        );
     }
 }

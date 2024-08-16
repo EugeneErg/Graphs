@@ -4,7 +4,7 @@ declare(strict_types = 1);
 
 namespace EugeneErg\Graphs\ValueObjects;
 
-final readonly class Graph
+final readonly class Graph implements GraphInterface
 {
     /**
      * @param bool[][] $connections
@@ -12,5 +12,30 @@ final readonly class Graph
      */
     public function __construct(public array $connections, public array $vertexes)
     {
+    }
+
+    public function getVertexes(): array
+    {
+        return $this->vertexes;
+    }
+
+    public function getConnections(): array
+    {
+        return $this->connections;
+    }
+
+    public function hasConnection(int $vertexA, int $vertexB): bool
+    {
+        return isset($this->connections[$vertexA][$vertexB]);
+    }
+
+    public function getValue(int $vertexA, int $vertexB): bool
+    {
+        return $this->connections[$vertexA][$vertexB];
+    }
+
+    public function getVertex(int $position): int
+    {
+        return $this->vertexes[$position];
     }
 }

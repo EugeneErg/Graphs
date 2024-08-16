@@ -7,7 +7,9 @@ namespace EugeneErg\Graphs\Services;
 use EugeneErg\Graphs\Aggregates\Canvas;
 use EugeneErg\Graphs\Exceptions\InvalidConnectionException;
 use EugeneErg\Graphs\Exceptions\InvalidVertexValueException;
+use EugeneErg\Graphs\ValueObjects\DirectionGraph;
 use EugeneErg\Graphs\ValueObjects\Graph;
+use EugeneErg\Graphs\ValueObjects\GraphInterface;
 
 readonly class GraphService
 {
@@ -81,9 +83,12 @@ readonly class GraphService
     }
 
     /**
+     * todo return class of $graph
+     * @param GraphInterface $graph
      * @param int[] $vertexes
+     * @return GraphInterface
      */
-    public function createSubGraph(Graph $graph, array $vertexes): Graph
+    public function createSubGraph(GraphInterface $graph, array $vertexes): GraphInterface
     {
         $connections = array_fill_keys($vertexes, []);
         $size = count($vertexes);
@@ -92,12 +97,25 @@ readonly class GraphService
             for ($posB = $posA + 1; $posB < $size; $posB++) {
                 $vertexB = $vertexes[$posB];
 
-                if (isset($graph->connections[$vertexA][$vertexB])) {
-                    $connections[$vertexA][$vertexB] = $connections[$vertexB][$vertexA] = $graph->connections[$vertexA][$vertexB];
+                if ($graph->hasConnection($vertexA,$vertexB)) {
+                    $connections[$vertexA][$vertexB] = $connections[$vertexB][$vertexA] = $graph->getValue($vertexA,$vertexB);
                 }
             }
         }
 
-        return new Graph($connections, $vertexes);
+        return new $graph($connections, $vertexes);
+    }
+
+    public function graphToDirection(Graph $graph): DirectionGraph
+    {
+        $connections = [];
+
+        foreach ($graph->connections as $vertexA => $connection) {
+            foreach ($connection as $vertexB => $value) {
+                $connections[$vertexA][$vertexB] = (int) $value;
+            }
+        }
+
+        return new DirectionGraph($connections, $graph->vertexes);
     }
 }

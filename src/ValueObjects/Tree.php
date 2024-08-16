@@ -8,7 +8,7 @@ final readonly class Tree
 {
     /**
      * @param Graph $graph
-     * @param Graph[]|null $branches
+     * @param DirectionGraph[]|null $branches
      * @param int[][]|null $connections
      */
     public function __construct(
