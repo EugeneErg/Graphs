@@ -343,7 +343,7 @@ readonly class EdgeService
 
         foreach ($path as $vertexA) {
             $value = $branch->getValue($vertexA, $vertexB);
-            $result = $value === 2 ? null : $value + 1;
+            $result[$vertexA][$vertexB] = $value === 2 ? null : $value + 1;
             $vertexB = $vertexA;
         }
 

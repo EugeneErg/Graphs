@@ -62,6 +62,11 @@ abstract class AbstractTestCase extends TestCase
         return self::shiftVertexes($shift, require __DIR__ . '/Cases/Graphs/SimpleRectangle.php');
     }
 
+    protected static function getTriangleInTriangle(int $shift = 0): array
+    {
+        return self::shiftVertexes($shift, require __DIR__ . '/Cases/Graphs/TriangleInTriangle.php');
+    }
+
     protected static function shiftVertexes(int $shift, array $connections): array
     {
         return $shift === 0
