@@ -13,4 +13,3 @@ return [
     4 => [3 => true, 5 => true, 1 => true],
     5 => [3 => true, 4 => true, 2 => true],
 ];
-

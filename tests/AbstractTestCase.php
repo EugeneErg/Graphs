@@ -4,13 +4,19 @@ declare(strict_types = 1);
 
 namespace Tests;
 
+use EugeneErg\Graphs\Exceptions\InvalidConnectionException;
+use EugeneErg\Graphs\Exceptions\InvalidVertexValueException;
 use EugeneErg\Graphs\Services\CanvasService;
 use EugeneErg\Graphs\Services\EdgeService;
 use EugeneErg\Graphs\Services\GraphService;
 use EugeneErg\Graphs\Services\IntersectionService;
 use EugeneErg\Graphs\Services\TreeService;
+use EugeneErg\Graphs\ValueObjects\DirectionGraph;
 use EugeneErg\Graphs\ValueObjects\GraphInterface;
+use LogicException;
 use PHPUnit\Framework\TestCase;
+use ReflectionException;
+use ReflectionMethod;
 
 abstract class AbstractTestCase extends TestCase
 {
@@ -65,6 +71,11 @@ abstract class AbstractTestCase extends TestCase
     protected static function getTriangleInTriangle(int $shift = 0): array
     {
         return self::shiftVertexes($shift, require __DIR__ . '/Cases/Graphs/TriangleInTriangle.php');
+    }
+
+    protected static function getTriangleInTriangleInTriangle(int $shift = 0): array
+    {
+        return self::shiftVertexes($shift, require __DIR__ . '/Cases/Graphs/TriangleInTriangleInTriangle.php');
     }
 
     protected static function shiftVertexes(int $shift, array $connections): array
@@ -185,5 +196,27 @@ abstract class AbstractTestCase extends TestCase
             $intersectionService ?? $this->getIntersectService($canvasService),
             $graphService ?? $this->getGraphService($canvasService),
         );
+    }
+
+    protected function runPrivateMethod(array $callback, mixed ...$parameters): mixed
+    {
+        try {
+            $method = new ReflectionMethod(...$callback);
+            $method->setAccessible(true);
+
+            return $method->invoke($callback[0], ...$parameters);
+        } catch (ReflectionException $exception) {
+            throw new LogicException($exception->getMessage(), previous: $exception);
+        }
+    }
+
+    /**
+     * @param bool[][] $branch
+     * @throws InvalidConnectionException
+     * @throws InvalidVertexValueException
+     */
+    protected function arrayToDirectionGraph(array $branch): DirectionGraph
+    {
+        return $this->getGraphService()->graphToDirection($this->getGraphService()->createFromConnections($branch));
     }
 }

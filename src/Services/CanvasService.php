@@ -22,7 +22,7 @@ readonly class CanvasService
             $vertex !== false;
             $vertex = next($result)
         ) {
-            foreach ($canvas->graph->connections[$vertex] ?? [] as $connectionVertex => $value) {
+            foreach ($canvas->graph->getConnection($vertex) ?? [] as $connectionVertex => $value) {
                 if ($canvas->isPixel($connectionVertex, $oldColor)) {
                     $canvas->setPixel($connectionVertex, $color);
                     $result[] = $connectionVertex;

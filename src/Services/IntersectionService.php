@@ -30,7 +30,7 @@ readonly class IntersectionService
 
         foreach ($path as $vertexA) {
             foreach ($branch->getConnection($vertexA) ?? [] as $vertexB => $value) {
-                $oldColor = $canvas[$vertexB];
+                $oldColor = $canvas->getPixel($vertexB);
 
                 if ($oldColor !== 1) {
                     $intersections[$oldColor === 0 ? $color + 1 : $oldColor][$vertexA] = true;
@@ -48,7 +48,7 @@ readonly class IntersectionService
         $outerColors = [];
 
         foreach ($outerVertexes as $outerVertex => $v) {
-            $outerColors[$canvas[$outerVertex]] = true;
+            $outerColors[$canvas->getPixel($outerVertex)] = true;
         }
 
         $result = [];
@@ -65,16 +65,18 @@ readonly class IntersectionService
     }
 
     /**
+     * @param array<int, bool> $connectionsA
+     * @param array<int, bool> $connectionsB
      * @param int[] $path
      */
-    public function isConflicted(Intersection $intersectionA, Intersection $intersectionB, array $path): bool
+    public function isConflicted(array $connectionsA, array $connectionsB, array $path): bool
     {
         $can = 0;
         $step = 0;
 
         foreach ($path as $vertex) {
-            $aIsConnected = $intersectionA->connections[$vertex] ?? false;
-            $bIsConnected = $intersectionB->connections[$vertex] ?? false;
+            $aIsConnected = $connectionsA[$vertex] ?? false;
+            $bIsConnected = $connectionsB[$vertex] ?? false;
 
             if (!$aIsConnected && !$bIsConnected) {
                 continue;

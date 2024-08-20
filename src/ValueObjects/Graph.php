@@ -10,7 +10,7 @@ final readonly class Graph implements GraphInterface
      * @param bool[][] $connections
      * @param int[] $vertexes
      */
-    public function __construct(public array $connections, public array $vertexes)
+    public function __construct(private array $connections, public array $vertexes)
     {
     }
 
@@ -22,6 +22,11 @@ final readonly class Graph implements GraphInterface
     public function getConnections(): array
     {
         return $this->connections;
+    }
+
+    public function getConnection(int $vertex): ?array
+    {
+        return $this->connections[$vertex] ?? null;
     }
 
     public function hasConnection(int $vertexA, int $vertexB): bool

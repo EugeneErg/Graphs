@@ -42,7 +42,7 @@ class ArticulationVertexesAggregate
             = $this->index[$vertexA]
             = $parentVertex === null ? 0 : $this->number[$parentVertex] + 1;
 
-        foreach ($this->graph->connections[$vertexA] ?? [] as $vertexB => $value) {
+        foreach ($this->graph->getConnection($vertexA) ?? [] as $vertexB => $value) {
             if ($vertexB === $parentVertex) {
                 continue;
             }

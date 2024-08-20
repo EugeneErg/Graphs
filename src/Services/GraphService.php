@@ -61,7 +61,7 @@ readonly class GraphService
      */
     public function splitGraphOnDisconnected(Graph $graph): array
     {
-        if ($graph->connections === []) {
+        if ($graph->getConnections() === []) {
             return [];
         }
 
@@ -110,7 +110,7 @@ readonly class GraphService
     {
         $connections = [];
 
-        foreach ($graph->connections as $vertexA => $connection) {
+        foreach ($graph->getConnections() as $vertexA => $connection) {
             foreach ($connection as $vertexB => $value) {
                 $connections[$vertexA][$vertexB] = (int) $value;
             }

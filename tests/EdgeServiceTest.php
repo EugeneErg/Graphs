@@ -6,11 +6,19 @@ namespace Tests;
 
 use EugeneErg\Graphs\Exceptions\InvalidConnectionException;
 use EugeneErg\Graphs\Exceptions\InvalidVertexValueException;
-use ReflectionException;
-use ReflectionMethod;
 
 final class EdgeServiceTest extends AbstractTestCase
 {
+    /**
+     * @dataProvider getGetIntersectionMatrixData
+     */
+    public function testGetIntersectionMatrix(array $path, array $intersections, array $expected): void
+    {
+        $actual = $this->runPrivateMethod([$this->getEdgeService(), 'getIntersectionMatrix'], $path, $intersections);
+
+        self::assertEquals($expected, $actual);
+    }
+
     /**
      * @dataProvider getPathToConnectionsData
      */
@@ -49,6 +57,15 @@ final class EdgeServiceTest extends AbstractTestCase
         $actual = $this->runPrivateMethod([$this->getEdgeService(), 'disconnectVertexes'], $vertexes, $graph);
 
         self::assertEquals($expected, $actual);
+    }
+
+    public static function getGetIntersectionMatrixData(): array
+    {
+        return [
+            [
+
+            ],
+        ];
     }
 
     public static function getPathToConnectionsData(): array
@@ -108,17 +125,5 @@ final class EdgeServiceTest extends AbstractTestCase
                 ],
             ]
         ];
-    }
-
-    private function runPrivateMethod(array $callback, mixed ...$parameters): mixed
-    {
-        try {
-            $method = new ReflectionMethod(...$callback);
-            $method->setAccessible(true);
-
-            return $method->invoke($callback[0], ...$parameters);
-        } catch (ReflectionException $exception) {
-            throw new \LogicException($exception->getMessage(), previous: $exception);
-        }
     }
 }

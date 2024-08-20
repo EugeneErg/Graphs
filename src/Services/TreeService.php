@@ -61,7 +61,7 @@ readonly class TreeService
 
             unset($articulationVertex[$pos]);
 
-            foreach($canvas->graph->connections[$vertexA] ?? [] as $vertexB => $value) {
+            foreach($canvas->graph->getConnection($vertexA) ?? [] as $vertexB => $value) {
                 if (!$canvas->isPixel($vertexB, $maxColor)) {
                     continue;
                 }

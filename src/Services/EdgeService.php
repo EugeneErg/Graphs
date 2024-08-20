@@ -304,7 +304,7 @@ readonly class EdgeService
             for ($i = $number + 1; $i < $intersectionsCount; $i++) {
                 $intersectionB = $intersections[$i];
 
-                if ($this->intersectionService->isConflicted($intersectionA, $intersectionB, $path)) {
+                if ($this->intersectionService->isConflicted($intersectionA->connections, $intersectionB->connections, $path)) {
                     $matrix->setValue($number, $i, 1);
                 }
             }
