@@ -69,7 +69,7 @@ readonly class TreeService
                 $hasResult = true;
                 $this->canvasService->setPixels($canvas, [$vertexA], ++$color);
                 $vertexes = $this->canvasService->fill($canvas, $vertexB, $color);
-                $vertexes[$vertexA] = $vertexA;
+                $vertexes[] = $vertexA;
 
                 if (!$this->split($articulationVertex, $canvas, $result, $color)) {
                     $result[] = $vertexes;

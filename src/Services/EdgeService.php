@@ -5,10 +5,10 @@ declare(strict_types = 1);
 namespace EugeneErg\Graphs\Services;
 
 use EugeneErg\Graphs\Aggregates\Canvas;
+use EugeneErg\Graphs\Aggregates\SliceAggregate;
 use EugeneErg\Graphs\ValueObjects\DirectionGraph;
 use EugeneErg\Graphs\ValueObjects\Edge;
 use EugeneErg\Graphs\ValueObjects\Intersection;
-use EugeneErg\Graphs\ValueObjects\SliceInterface;
 use Exception;
 use LogicException;
 
@@ -27,9 +27,8 @@ readonly class EdgeService
      */
     public function splitOnTreeEdges(
         DirectionGraph $branch,
-        SliceInterface $slice,
+        SliceAggregate $slice,
         ?array $outerEdge = null,
-        int $level = 0,
     ): Edge {
         if (count($branch->getVertexes()) < 4) {
             return new Edge($branch->getVertexes());
@@ -37,7 +36,7 @@ readonly class EdgeService
 
         $hasOuter = $outerEdge !== null;
         $outerEdge = $outerEdge ?? [];
-        $edgeVertexesKey = $this->getKey($slice, $branch->getVertexes());
+        $edgeVertexesKey = $slice->getKey($branch->getVertexes());
         $edgeVertexes = $hasOuter ? array_flip($outerEdge) : [$branch->getVertex($edgeVertexesKey) => 0];
         $outerVertexes = array_fill_keys($hasOuter ? $outerEdge : [$branch->getVertex($edgeVertexesKey)], true);
         $resultChildren = [];
@@ -96,7 +95,7 @@ readonly class EdgeService
                             /** @var DirectionGraph $graph */
                             $graph = $this->graphService->createSubGraph($branch, array_merge($path, $innerVertexes));
                             $graph->replaceConnection($this->pathToConnections($path));
-                            $resultChildren[] = $this->splitOnTreeEdges($graph, $slice, $path, $level + 1);
+                            $resultChildren[] = $this->splitOnTreeEdges($graph, $slice, $path);
                         }
                     } elseif ($outerEdge === []) {
                         $outerEdge = $path;
@@ -152,14 +151,6 @@ readonly class EdgeService
         return $result;
     }
 
-    private function getKey(SliceInterface $slice, array $values): string|int
-    {
-        $position = $slice->getNextValue(count($values));
-        $keyValue = array_slice($values, $position, 1, true);
-
-        return array_key_first($keyValue);
-    }
-
     /**
      * @return int[]|null
      */
@@ -183,7 +174,7 @@ readonly class EdgeService
 
                 foreach ($graph->getConnection($currentVertex) ?? [] as $nextVertex => $value) {
                     if (
-                        $canvas[$nextVertex] === 0
+                        $canvas->isPixel($nextVertex, 0)
                         && (
                             (!$currentValue && $value !== 3)
                             || ($currentValue && $value === 2)
@@ -200,7 +191,7 @@ readonly class EdgeService
             }
         }
 
-        if ($canvas[$vertexA] === 0) {
+        if ($canvas->isPixel($vertexA, 0)) {
             return null;
         }
 
@@ -225,92 +216,12 @@ readonly class EdgeService
         DirectionGraph $branch,
         array $path,
         array $outerVertexes,
-        SliceInterface $slice,
+        SliceAggregate $slice,
     ): array {
-        $innerIntersections = $this->getInnerIntersections($branch, $path, $outerVertexes, $slice);
+        $innerIntersections = $this->intersectionService->getInnerIntersections($branch, $path, $outerVertexes, $slice);
         $innerVertexes = array_map(fn (Intersection $intersection) => $intersection->vertexes, $innerIntersections);
 
         return array_merge(...$innerVertexes);
-    }
-
-    /**
-     * @param int[] $path
-     * @param array<int, bool> $outerVertexes
-     * @return Intersection[]
-     * @throws Exception
-     */
-    private function getInnerIntersections(
-        DirectionGraph $branch,
-        array $path,
-        array $outerVertexes,
-        SliceInterface $slice,
-    ): array {
-        $intersections = $this->intersectionService->getIntersections($branch, $path, $outerVertexes);
-        $matrix = $this->getIntersectionMatrix($path, $intersections);
-        $knowns = [];
-        $unknowns = [];
-        $result = [];
-
-        foreach ($intersections as $number => $intersection) {
-            $intersection->isOuter
-                ? $knowns[$number] = true
-                : $unknowns[$number] = $intersection;
-        }
-
-        while ($unknowns !== [] || $knowns !== []) {
-            $newKnowns = [];
-
-            foreach ($knowns as $vertexA => $isOuter) {
-                foreach ($matrix->getConnection($vertexA) ?? [] as $vertexB => $value) {
-                    if (isset($unknowns[$vertexB])) {
-                        $unknowns[$vertexB]->setIsOuter(!$isOuter);
-                        $newKnowns[$vertexB] = !$isOuter;
-
-                        if ($isOuter) {
-                            $result[] = $unknowns[$vertexB];
-                        }
-
-                        unset($unknowns[$vertexB]);
-                    } elseif ($intersections[$vertexB]->isOuter === $isOuter) {
-                        throw new LogicException('graph is not planar');
-                    }
-                }
-            }
-
-            $knowns = $newKnowns;
-
-            if ($newKnowns === [] && $unknowns !== []) {
-                $vertexB = $this->getKey($slice, $unknowns);
-                $result[] = $unknowns[$vertexB];
-                $knowns[$vertexB] = false;
-                $unknowns[$vertexB]->setIsOuter(false);
-                unset($unknowns[$vertexB]);
-            }
-        }
-
-        return $result;
-    }
-
-    /**
-     * @param int[] $path
-     * @param Intersection[] $intersections
-     */
-    private function getIntersectionMatrix(array $path, array $intersections): DirectionGraph
-    {
-        $matrix = new DirectionGraph([], array_keys($intersections));
-        $intersectionsCount = count($intersections);
-
-        foreach ($intersections as $number => $intersectionA) {
-            for ($i = $number + 1; $i < $intersectionsCount; $i++) {
-                $intersectionB = $intersections[$i];
-
-                if ($this->intersectionService->isConflicted($intersectionA->connections, $intersectionB->connections, $path)) {
-                    $matrix->setValue($number, $i, 1);
-                }
-            }
-        }
-
-        return $matrix;
     }
 
     /**

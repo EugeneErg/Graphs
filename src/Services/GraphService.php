@@ -97,7 +97,7 @@ readonly class GraphService
             for ($posB = $posA + 1; $posB < $size; $posB++) {
                 $vertexB = $vertexes[$posB];
 
-                if ($graph->hasConnection($vertexA,$vertexB)) {
+                if ($graph->hasConnection($vertexA, $vertexB)) {
                     $connections[$vertexA][$vertexB] = $connections[$vertexB][$vertexA] = $graph->getValue($vertexA,$vertexB);
                 }
             }

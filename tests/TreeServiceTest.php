@@ -7,7 +7,7 @@ namespace Tests;
 use EugeneErg\Graphs\Aggregates\ArticulationVertexesAggregate;
 use EugeneErg\Graphs\Exceptions\InvalidConnectionException;
 use EugeneErg\Graphs\Exceptions\InvalidVertexValueException;
-use EugeneErg\Graphs\ValueObjects\Graph;
+use EugeneErg\Graphs\ValueObjects\GraphInterface;
 
 final class TreeServiceTest extends AbstractTestCase
 {
@@ -33,8 +33,8 @@ final class TreeServiceTest extends AbstractTestCase
 
         self::assertEquals($graph, $actual->graph);
         self::assertEquals(
-            self::changeValue($expectedConnections, fn (Graph $branch) => self::graphToMatrix($branch)),
-            self::changeValue($actual->branches, fn (Graph $branch) => self::graphToMatrix($branch)),
+            self::changeValue($expectedConnections, fn (GraphInterface $branch) => self::graphToMatrix($branch)),
+            self::changeValue($actual->branches, fn (GraphInterface $branch) => self::graphToMatrix($branch)),
         );
         self::assertEquals($expectedTreeConnections, $actual->connections);
     }
@@ -54,8 +54,8 @@ final class TreeServiceTest extends AbstractTestCase
                         2 => [1 => true],
                     ],
                     [
-                        2 => [],
-                        3 => [],
+                        2 => [3 => true],
+                        3 => [2 => true],
                     ],
                 ],
                 [

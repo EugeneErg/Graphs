@@ -12,6 +12,7 @@ use EugeneErg\Graphs\Services\GraphService;
 use EugeneErg\Graphs\Services\IntersectionService;
 use EugeneErg\Graphs\Services\TreeService;
 use EugeneErg\Graphs\ValueObjects\DirectionGraph;
+use EugeneErg\Graphs\ValueObjects\Graph;
 use EugeneErg\Graphs\ValueObjects\GraphInterface;
 use LogicException;
 use PHPUnit\Framework\TestCase;
@@ -161,7 +162,7 @@ abstract class AbstractTestCase extends TestCase
             $row = [str_pad((string) $vertexA, $maxSize)];
 
             foreach ($vertexes as $pos => $vertexB) {
-                $row[] = str_pad($graph->hasConnection($vertexA, $vertexB) ? $graph->getValue($vertexA, $vertexB) : '', $sizes[$pos]);
+                $row[] = str_pad($graph->hasConnection($vertexA, $vertexB) ? (string) $graph->getValue($vertexA, $vertexB) : '', $sizes[$pos]);
             }
 
             $result[] = implode('|', $row);
@@ -218,5 +219,18 @@ abstract class AbstractTestCase extends TestCase
     protected function arrayToDirectionGraph(array $branch): DirectionGraph
     {
         return $this->getGraphService()->graphToDirection($this->getGraphService()->createFromConnections($branch));
+    }
+
+    protected function generateRandomGraph(int $size, int $weight, bool $connected, bool $disconnected): Graph
+    {
+        //todo
+        $connections = [];
+        $outerVertexes = [];
+
+        for ($i = 0; $i < $size; $i++) {
+
+        }
+
+        return new Graph($connections, range(0, $size - 1));
     }
 }

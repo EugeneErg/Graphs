@@ -4,12 +4,40 @@ declare(strict_types = 1);
 
 namespace Tests;
 
+use EugeneErg\Graphs\Aggregates\SliceAggregate;
 use EugeneErg\Graphs\Exceptions\InvalidConnectionException;
 use EugeneErg\Graphs\Exceptions\InvalidVertexValueException;
 use EugeneErg\Graphs\ValueObjects\Intersection;
+use EugeneErg\Graphs\ValueObjects\ZeroSlice;
 
 final class IntersectionServiceTest extends AbstractTestCase
 {
+    /**
+     * @dataProvider getGetInnerIntersectionsData
+     *
+     * @throws InvalidConnectionException
+     * @throws InvalidVertexValueException
+     * @throws \Exception
+     */
+    public function testGetInnerIntersections(array $branch, array $path, array $outerVertexes, array $expected): void
+    {
+        $graph = $this->getGraphService()->graphToDirection($this->getGraphService()->createFromConnections($branch));
+
+        $actual = $this->getIntersectService()->getInnerIntersections($graph, $path, $outerVertexes, new SliceAggregate(new ZeroSlice()));
+
+        self::assertEquals($expected, $actual);
+    }
+
+    /**
+     * @dataProvider getGetIntersectionMatrixData
+     */
+    public function testGetIntersectionMatrix(array $path, array $intersections, array $expected): void
+    {
+        $actual = $this->runPrivateMethod([$this->getIntersectService(), 'getIntersectionMatrix'], $path, $intersections);
+
+        self::assertEquals($expected, self::graphToMatrix($actual));
+    }
+
     /**
      * @dataProvider getGetIntersectionsData
      *
@@ -20,7 +48,7 @@ final class IntersectionServiceTest extends AbstractTestCase
     {
         $graph = $this->arrayToDirectionGraph($branch);
 
-        $actual = $this->getIntersectService()->getIntersections($graph, $path, $outerVertexes);
+        $actual = $this->runPrivateMethod([$this->getIntersectService(), 'getIntersections'], $graph, $path, $outerVertexes);
 
         $this->assertEquals(
             $expected,
@@ -33,9 +61,53 @@ final class IntersectionServiceTest extends AbstractTestCase
      */
     public function testIsConflicted(array $path, array $connectionsA, array $connectionsB, bool $expected): void
     {
-        $actual = $this->getIntersectService()->isConflicted($connectionsA, $connectionsB, $path);
+        $actual = $this->runPrivateMethod([$this->getIntersectService(), 'isConflicted'], $connectionsA, $connectionsB, $path);
 
         $this->assertEquals($expected, $actual);
+    }
+
+    public static function getGetInnerIntersectionsData(): array
+    {
+        return [
+            [
+                self::getTriangleInTriangleInTriangle(),
+                [3, 4, 5],
+                [0 => true],
+                [
+                    new Intersection(
+                        vertexes: [6, 7, 8],
+                        connections: [3 => true, 4 => true, 5 => true],
+                        isOuter: false,
+                    ),
+                ],
+            ],
+        ];
+    }
+
+    public static function getGetIntersectionMatrixData(): array
+    {
+        return [
+            [
+                [3, 4, 5],
+                [
+                    new Intersection(
+                        vertexes: [0, 1, 2],
+                        connections: [3 => true, 4 => true, 5 => true],
+                        isOuter: true,
+                    ),
+                    new Intersection(
+                        vertexes: [6, 7, 8],
+                        connections: [3 => true, 4 => true, 5 => true],
+                        isOuter: null,
+                    ),
+                ],
+                [
+                    ' |0|1',//todo why
+                    '0| |1',
+                    '1|1| ',
+                ],
+            ],
+        ];
     }
 
     public static function getGetIntersectionsData(): array
