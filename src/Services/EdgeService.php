@@ -9,6 +9,7 @@ use EugeneErg\Graphs\Aggregates\SliceAggregate;
 use EugeneErg\Graphs\ValueObjects\DirectionGraph;
 use EugeneErg\Graphs\ValueObjects\Edge;
 use EugeneErg\Graphs\ValueObjects\Intersection;
+use EugeneErg\Graphs\ValueObjects\TreeEdge;
 use Exception;
 use LogicException;
 
@@ -29,9 +30,9 @@ readonly class EdgeService
         DirectionGraph $branch,
         SliceAggregate $slice,
         ?array $outerEdge = null,
-    ): Edge {
+    ): TreeEdge {
         if (count($branch->getVertexes()) < 4) {
-            return new Edge($branch->getVertexes());
+            return new TreeEdge(new Edge($branch->getVertexes()));
         }
 
         $hasOuter = $outerEdge !== null;
@@ -90,7 +91,7 @@ readonly class EdgeService
                     if (!$needOuter || $hasOuter) {
                         if ($innerVertexes === []) {
                             $newEdge = new Edge($path);
-                            $resultChildren[] = $newEdge;
+                            $resultChildren[] = new TreeEdge($newEdge);
                         } else {
                             /** @var DirectionGraph $graph */
                             $graph = $this->graphService->createSubGraph($branch, array_merge($path, $innerVertexes));
@@ -124,7 +125,7 @@ readonly class EdgeService
             throw new LogicException('Is not planar graph');
         }
 
-        return new Edge($outerEdge, $resultChildren);
+        return new TreeEdge(new Edge($outerEdge), $resultChildren);
     }
 
     /**
@@ -165,7 +166,7 @@ readonly class EdgeService
                 $currentValue = !empty($values[$currentVertex]);
                 unset($values[$currentVertex]);
 
-                if ($graph->hasConnection($currentVertex, $vertexA)) {
+                if ($graph->hasValue($currentVertex, $vertexA)) {
                     $this->canvasService->setPixels($canvas, [$vertexA], 1);
                     $steps[$step + 1][$vertexA] = $currentVertex;
 
@@ -272,6 +273,30 @@ readonly class EdgeService
         foreach ($vertexes as $vertexA) {
             foreach ($branch->getConnection($vertexA) ?? [] as $vertexB => $value) {
                 $result[$vertexA][$vertexB] = null;
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return int[]
+     */
+    public function getPartEdge(Edge $edge, int $offset, int $count = null): array
+    {
+        $result = [];
+        $vertexCount = count($edge->vertexes);
+        $count ??= $vertexCount;
+
+        if ($count < 0) {
+            $offset += $vertexCount;
+
+            for ($pos = 0; $pos > $count; $pos--) {
+                $result[] = $edge->vertexes[($pos + $offset) % $vertexCount];
+            }
+        } else {
+            for ($pos = 0; $pos < $count; $pos++) {
+                $result[] = $edge->vertexes[($pos + $offset) % $vertexCount];
             }
         }
 

@@ -8,11 +8,23 @@ use EugeneErg\Graphs\Aggregates\SliceAggregate;
 use EugeneErg\Graphs\Exceptions\InvalidConnectionException;
 use EugeneErg\Graphs\Exceptions\InvalidVertexValueException;
 use EugeneErg\Graphs\ValueObjects\Edge;
+use EugeneErg\Graphs\ValueObjects\TreeEdge;
 use EugeneErg\Graphs\ValueObjects\ZeroSlice;
 use Exception;
 
 final class EdgeServiceTest extends AbstractTestCase
 {
+    /**
+     * @dataProvider getGetPartEdgeData
+     *
+     * @param int[] $expected
+     */
+    public function testGetPartEdge(int $offset, bool $count, array $expected): void
+    {
+        $actual = $this->getEdgeService()->getPartEdge(new Edge([1, 2, 3, 4, 5]), $offset, $count ? 3 : -3);
+
+        $this->assertEquals($expected, $actual);
+    }
 
     /**
      * @dataProvider getSplitOnTreeEdgesData
@@ -21,7 +33,7 @@ final class EdgeServiceTest extends AbstractTestCase
      * @throws InvalidVertexValueException
      * @throws Exception
      */
-    public function testSplitOnTreeEdges(array $branch, Edge $expected): void
+    public function testSplitOnTreeEdges(array $branch, TreeEdge $expected): void
     {
         $graph = $this->getGraphService()->graphToDirection($this->getGraphService()->createFromConnections($branch));
 
@@ -126,30 +138,30 @@ final class EdgeServiceTest extends AbstractTestCase
         return [
             [
                 self::getRectangle(),
-                new Edge([0, 3, 2, 1], [
-                    new Edge([0, 3, 2, 1]),
+                new TreeEdge(new Edge([0, 3, 2, 1]), [
+                    new TreeEdge(new Edge([0, 3, 2, 1])),
                 ]),
             ],
             [
                 self::getTriangleInTriangle(),
-                new Edge([1, 4, 5, 2], [
-                    new Edge([0, 2, 1]),
-                    new Edge([0, 1, 4, 3]),
-                    new Edge([2, 0, 3, 5]),
-                    new Edge([4, 3, 5]),
+                new TreeEdge(new Edge([1, 4, 5, 2]), [
+                    new TreeEdge(new Edge([0, 2, 1])),
+                    new TreeEdge(new Edge([0, 1, 4, 3])),
+                    new TreeEdge(new Edge([2, 0, 3, 5])),
+                    new TreeEdge(new Edge([4, 3, 5])),
                 ]),
             ],
             [
                 self::getTriangleInTriangleInTriangle(),
-                new Edge([1, 4, 5, 2], [
-                    new Edge([0, 2, 1]),
-                    new Edge([0, 1, 4, 3]),
-                    new Edge([2, 0, 3, 5]),
-                    new Edge([4, 3, 5], [
-                        new Edge([4, 3, 6, 7]),
-                        new Edge([5,4, 7, 8]),
-                        new Edge([6, 7, 8]),
-                        new Edge([3, 6, 8, 5]),
+                new TreeEdge(new Edge([1, 4, 5, 2]), [
+                    new TreeEdge(new Edge([0, 2, 1])),
+                    new TreeEdge(new Edge([0, 1, 4, 3])),
+                    new TreeEdge(new Edge([2, 0, 3, 5])),
+                    new TreeEdge(new Edge([4, 3, 5]), [
+                        new TreeEdge(new Edge([4, 3, 6, 7])),
+                        new TreeEdge(new Edge([5,4, 7, 8])),
+                        new TreeEdge(new Edge([6, 7, 8])),
+                        new TreeEdge(new Edge([3, 6, 8, 5])),
                     ]),
                 ])
             ],
@@ -260,6 +272,62 @@ final class EdgeServiceTest extends AbstractTestCase
                     2 => [0 => null, 1 => null, 5 => null],
                 ],
             ]
+        ];
+    }
+
+    public static function getGetPartEdgeData(): array
+    {
+        return [
+            [
+                0,
+                true,
+                [1, 2, 3],
+            ],
+            [
+                1,
+                true,
+                [2, 3, 4],
+            ],
+            [
+                2,
+                true,
+                [3, 4, 5],
+            ],
+            [
+                3,
+                true,
+                [4, 5, 1],
+            ],
+            [
+                4,
+                true,
+                [5, 1, 2],
+            ],
+            [
+                0,
+                false,
+                [1, 5, 4],
+            ],
+            [
+                1,
+                false,
+                [2, 1, 5],
+            ],
+            [
+                2,
+                false,
+                [3, 2, 1],
+            ],
+            [
+                3,
+                false,
+                [4, 3, 2],
+            ],
+            [
+                4,
+                false,
+                [5, 4, 3],
+            ],
         ];
     }
 }
