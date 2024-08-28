@@ -6,6 +6,7 @@ namespace EugeneErg\Graphs\Services;
 
 use EugeneErg\Graphs\Aggregates\ArticulationVertexesAggregate;
 use EugeneErg\Graphs\Aggregates\Canvas;
+use EugeneErg\Graphs\ValueObjects\DirectionGraph;
 use EugeneErg\Graphs\ValueObjects\Tree;
 
 readonly class TreeService
@@ -24,6 +25,7 @@ readonly class TreeService
             return new Tree(
                 $articulationVertexesAggregate->graph,
                 [$directionGraph],
+                new DirectionGraph([], []),
             );
         }
 
@@ -35,14 +37,29 @@ readonly class TreeService
             $result,
         );
         $connections = [];
+        $graphVertexes = [];
 
         foreach ($result as $branchNumber => $vertexes) {
+            $graphVertexes[] = $branchNumber;
+
             foreach ($vertexes as $vertex) {
                 $connections[$vertex][] = $branchNumber;
             }
         }
 
-        return new Tree($articulationVertexesAggregate->graph, $branches, $connections);
+        $matrix = [];
+
+        foreach ($connections as $vertex => $subBranches) {
+            foreach ($subBranches as $branchA) {
+                foreach ($subBranches as $branchB) {
+                    if ($branchA !== $branchB) {
+                        $matrix[$branchA][$branchB] = $vertex;
+                    }
+                }
+            }
+        }
+
+        return new Tree($articulationVertexesAggregate->graph, $branches, new DirectionGraph($matrix, $graphVertexes));
     }
 
     private function split(

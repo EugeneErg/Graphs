@@ -19,7 +19,9 @@ interface GraphInterface
 
     public function getConnection(int $vertex): ?array;
 
-    public function hasConnection(int $vertexA, int $vertexB): bool;
+    public function hasConnection(int $vertexA): bool;
+
+    public function hasValue(int $vertexA, int $vertexB): bool;
 
     public function getValue(int $vertexA, int $vertexB): mixed;
 

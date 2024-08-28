@@ -11,6 +11,7 @@ use EugeneErg\Graphs\Services\EdgeService;
 use EugeneErg\Graphs\Services\GraphService;
 use EugeneErg\Graphs\Services\IntersectionService;
 use EugeneErg\Graphs\Services\TreeService;
+use EugeneErg\Graphs\Services\VertexService;
 use EugeneErg\Graphs\ValueObjects\DirectionGraph;
 use EugeneErg\Graphs\ValueObjects\Graph;
 use EugeneErg\Graphs\ValueObjects\GraphInterface;
@@ -41,6 +42,25 @@ abstract class AbstractTestCase extends TestCase
         return new TreeService(
             $canvasService,
             $graphService ?? $this->getGraphService($canvasService),
+        );
+    }
+
+    protected function getVertexService(
+        ?CanvasService $canvasService = null,
+        ?GraphService $graphService = null,
+        ?EdgeService $edgeService = null,
+        ?IntersectionService $intersectionService = null,
+    ): VertexService {
+        $canvasService ??= $this->getCanvasService();
+        $graphService ??= $this->getGraphService($canvasService);
+
+        return new VertexService(
+            $graphService,
+            $edgeService ?? $this->getEdgeService(
+                $canvasService,
+                $intersectionService ?? $this->getIntersectService($canvasService),
+                $graphService,
+            ),
         );
     }
 
@@ -162,7 +182,7 @@ abstract class AbstractTestCase extends TestCase
             $row = [str_pad((string) $vertexA, $maxSize)];
 
             foreach ($vertexes as $pos => $vertexB) {
-                $row[] = str_pad($graph->hasConnection($vertexA, $vertexB) ? (string) $graph->getValue($vertexA, $vertexB) : '', $sizes[$pos]);
+                $row[] = str_pad($graph->hasValue($vertexA, $vertexB) ? (string) $graph->getValue($vertexA, $vertexB) : '', $sizes[$pos]);
             }
 
             $result[] = implode('|', $row);
@@ -199,13 +219,13 @@ abstract class AbstractTestCase extends TestCase
         );
     }
 
-    protected function runPrivateMethod(array $callback, mixed ...$parameters): mixed
+    protected function runPrivateMethod(array $callback, mixed &...$parameters): mixed
     {
         try {
             $method = new ReflectionMethod(...$callback);
             $method->setAccessible(true);
 
-            return $method->invoke($callback[0], ...$parameters);
+            return $method->invokeArgs($callback[0], $parameters);
         } catch (ReflectionException $exception) {
             throw new LogicException($exception->getMessage(), previous: $exception);
         }

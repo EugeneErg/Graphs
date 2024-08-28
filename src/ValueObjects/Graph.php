@@ -29,9 +29,14 @@ final readonly class Graph implements GraphInterface
         return $this->connections[$vertex] ?? null;
     }
 
-    public function hasConnection(int $vertexA, int $vertexB): bool
+    public function hasValue(int $vertexA, int $vertexB): bool
     {
         return isset($this->connections[$vertexA][$vertexB]);
+    }
+
+    public function hasConnection(int $vertexA): bool
+    {
+        return isset($this->connections[$vertexA]);
     }
 
     public function getValue(int $vertexA, int $vertexB): bool

@@ -33,9 +33,9 @@ final class DirectionGraph implements GraphInterface
         return $this->connections;
     }
 
-    public function hasConnection(int $vertexA, int $vertexB): bool
+    public function hasConnection(int $vertexA): bool
     {
-        return isset($this->connections[$vertexA][$vertexB]);
+        return isset($this->connections[$vertexA]);
     }
 
     public function getValue(int $vertexA, int $vertexB): int

@@ -11,6 +11,21 @@ use EugeneErg\Graphs\ValueObjects\Graph;
 final class GraphServiceTest extends AbstractTestCase
 {
     /**
+     * @dataProvider getDirectData
+     *
+     * @throws InvalidConnectionException
+     * @throws InvalidVertexValueException
+     */
+    public function testDirect(array $branch, int $vertex, array $expected): void
+    {
+        $graph = $this->getGraphService()->graphToDirection($this->getGraphService()->createFromConnections($branch));
+
+        $actual = $this->getGraphService()->direct($graph, $vertex);
+
+        $this->assertEquals($expected, self::graphToMatrix($actual));
+    }
+
+    /**
      * @throws InvalidVertexValueException
      * @throws InvalidConnectionException
      */
@@ -98,6 +113,17 @@ final class GraphServiceTest extends AbstractTestCase
             array_map(fn (array $connections) => $this->graphToMatrix($graphService->createFromConnections($connections)), $expectedGraphs),
             array_map(fn (Graph $graph) => $this->graphToMatrix($graph), $actual),
         );
+    }
+
+    public static function getDirectData(): array
+    {
+        return [
+            [//todo
+                self::getTriangleInTriangle(),
+                1,
+                [],
+            ]
+        ];
     }
 
     public static function getSplitGraphOnDisconnectedData(): array

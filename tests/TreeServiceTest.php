@@ -7,6 +7,7 @@ namespace Tests;
 use EugeneErg\Graphs\Aggregates\ArticulationVertexesAggregate;
 use EugeneErg\Graphs\Exceptions\InvalidConnectionException;
 use EugeneErg\Graphs\Exceptions\InvalidVertexValueException;
+use EugeneErg\Graphs\ValueObjects\DirectionGraph;
 use EugeneErg\Graphs\ValueObjects\GraphInterface;
 
 final class TreeServiceTest extends AbstractTestCase
@@ -19,7 +20,7 @@ final class TreeServiceTest extends AbstractTestCase
     public function testFromConnectionGraphSuccess(
         array $connections,
         array $expectedBranches,
-        array $expectedTreeConnections,
+        DirectionGraph $expectedTreeConnections,
     ): void {
         $graphService = $this->getGraphService();
         $graph = $graphService->createFromConnections($connections);
@@ -58,12 +59,11 @@ final class TreeServiceTest extends AbstractTestCase
                         3 => [2 => true],
                     ],
                 ],
-                [
-                    [0],
-                    [0, 1],
-                    [1, 2],
-                    [2],
-                ],
+                new DirectionGraph([
+                    0 => [1 => 1],
+                    1 => [0 => 1, 2 => 2],
+                    2 => [1 => 2],
+                ], [0, 1, 2]),
             ],
         ];
     }

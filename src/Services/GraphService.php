@@ -18,6 +18,26 @@ readonly class GraphService
     ) {
     }
 
+    public function direct(DirectionGraph $graph, int $vertex): DirectionGraph
+    {
+        $parent = null;
+        $new = clone $graph;
+
+        for ($vertexes = [$vertex => $parent]; $vertex !== null; $vertex = key($vertexes)) {
+            foreach ($graph->getConnection($vertex) ?? [] as $vertexB => $value) {
+                if ($vertexB !== $parent) {
+                    $new->unsetValue($vertexB, $vertex);
+                    $vertexes[$vertexB] = $vertex;
+                }
+            }
+
+            $parent = next($vertexes);
+        }
+
+        return $new;
+    }
+
+
     /**
      * @param bool[][] $connections
      * @throws InvalidConnectionException
@@ -97,7 +117,7 @@ readonly class GraphService
             for ($posB = $posA + 1; $posB < $size; $posB++) {
                 $vertexB = $vertexes[$posB];
 
-                if ($graph->hasConnection($vertexA, $vertexB)) {
+                if ($graph->hasValue($vertexA, $vertexB)) {
                     $connections[$vertexA][$vertexB] = $connections[$vertexB][$vertexA] = $graph->getValue($vertexA,$vertexB);
                 }
             }
