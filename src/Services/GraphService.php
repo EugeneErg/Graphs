@@ -26,7 +26,7 @@ readonly class GraphService
         for ($vertexes = [$vertex => $parent]; $vertex !== null; $vertex = key($vertexes)) {
             foreach ($graph->getConnection($vertex) ?? [] as $vertexB => $value) {
                 if ($vertexB !== $parent) {
-                    $new->unsetValue($vertexB, $vertex);
+                    $new->unsetValue($vertexB, $vertex, true);
                     $vertexes[$vertexB] = $vertex;
                 }
             }
@@ -36,7 +36,6 @@ readonly class GraphService
 
         return $new;
     }
-
 
     /**
      * @param bool[][] $connections

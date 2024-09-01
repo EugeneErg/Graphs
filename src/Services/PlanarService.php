@@ -34,17 +34,18 @@ readonly class PlanarService
         $graph = $this->graphService->createFromConnections($connections);
         $disconnectedGraphs = $this->graphService->splitGraphOnDisconnected($graph);
         $trees = [];
-        $edgesByTreeAndBranch = [];
 
         foreach ($disconnectedGraphs as $graph) {
             $trees[] = $this->treeService->fromConnectionGraph((new ArticulationVertexesAggregate($graph)));
         }
 
+        $edgesByTree = [];
+
         foreach ($trees as $treePos => $tree) {
-            $this->treeToSwg($treePos, $tree, $sliceAggregate);
+            $edgesByTree[$treePos] = $this->treeToSwg($tree, $sliceAggregate);
         }
 
-
+        return $edgesByTree;
     }
 
     /**
@@ -66,16 +67,22 @@ readonly class PlanarService
         return $result;
     }
 
-    private function treeToSwg(int $treePos, Tree $tree)
+    /**
+     * @return Edge[]
+     *
+     * @throws Exception
+     */
+    private function treeToSwg(Tree $tree, SliceAggregate $sliceAggregate): array
     {
-        foreach ($tree->branches as $branchPos => $branch) {
-            $this->branchToSwg()
-        }
-    }
+        /** @var Edge[][] $edgesCube */
+        $edgesCube = [];
 
-    private function branchToSwg()
-    {
-        $edgesByTreeAndBranch[$treePos][$branchPos] = $this->edgeToList($this->edgeService
-            ->splitOnTreeEdges($branch, $sliceAggregate));
+        foreach ($tree->branches as $branchPos => $branch) {
+            $edgesCube[$branchPos] = $this->edgeToList(
+                $this->edgeService->splitOnTreeEdges($branch, $sliceAggregate),
+            );
+        }
+
+        return $this->vertexService->mergeTree($edgesCube, $tree->connections, $sliceAggregate);
     }
 }

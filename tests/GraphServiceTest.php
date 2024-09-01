@@ -6,6 +6,7 @@ namespace Tests;
 
 use EugeneErg\Graphs\Exceptions\InvalidConnectionException;
 use EugeneErg\Graphs\Exceptions\InvalidVertexValueException;
+use EugeneErg\Graphs\ValueObjects\DirectionGraph;
 use EugeneErg\Graphs\ValueObjects\Graph;
 
 final class GraphServiceTest extends AbstractTestCase
@@ -16,11 +17,9 @@ final class GraphServiceTest extends AbstractTestCase
      * @throws InvalidConnectionException
      * @throws InvalidVertexValueException
      */
-    public function testDirect(array $branch, int $vertex, array $expected): void
+    public function testDirect(DirectionGraph $branch, int $vertex, array $expected): void
     {
-        $graph = $this->getGraphService()->graphToDirection($this->getGraphService()->createFromConnections($branch));
-
-        $actual = $this->getGraphService()->direct($graph, $vertex);
+        $actual = $this->getGraphService()->direct($branch, $vertex);
 
         $this->assertEquals($expected, self::graphToMatrix($actual));
     }
@@ -118,11 +117,22 @@ final class GraphServiceTest extends AbstractTestCase
     public static function getDirectData(): array
     {
         return [
-            [//todo
-                self::getTriangleInTriangle(),
-                1,
-                [],
-            ]
+            [
+                new DirectionGraph([
+                    0 => [1 => 4],
+                    1 => [0 => 4, 2 => 5],
+                    2 => [1 => 5, 3 => 6],
+                    3 => [2 => 6],
+                ], [0, 1, 2, 3]),
+                0,
+                [
+                    ' ' => '0|1|2|3',
+                    '0' => ' |4| | ',
+                    '1' => ' | |5| ',
+                    '2' => ' | | |6',
+                    '3' => ' | | | ',
+                ],
+            ],
         ];
     }
 

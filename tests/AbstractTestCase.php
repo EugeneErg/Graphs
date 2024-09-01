@@ -10,6 +10,7 @@ use EugeneErg\Graphs\Services\CanvasService;
 use EugeneErg\Graphs\Services\EdgeService;
 use EugeneErg\Graphs\Services\GraphService;
 use EugeneErg\Graphs\Services\IntersectionService;
+use EugeneErg\Graphs\Services\PlanarService;
 use EugeneErg\Graphs\Services\TreeService;
 use EugeneErg\Graphs\Services\VertexService;
 use EugeneErg\Graphs\ValueObjects\DirectionGraph;
@@ -64,6 +65,27 @@ abstract class AbstractTestCase extends TestCase
         );
     }
 
+    protected function getPlanarService(
+        ?CanvasService $canvasService = null,
+        ?GraphService $graphService = null,
+        ?TreeService $treeService = null,
+        ?EdgeService $edgeService = null,
+        ?IntersectionService $intersectionService = null,
+    ): PlanarService {
+        $canvasService ??= $this->getCanvasService();
+        $graphService ??= $this->getGraphService($canvasService);
+        $treeService ??= $this->getTreeService($canvasService, $graphService);
+        $intersectionService ??= $this->getIntersectService($canvasService);
+        $edgeService ??= $this->getEdgeService($canvasService, $intersectionService, $graphService);
+
+        return new PlanarService(
+            $graphService,
+            $treeService,
+            $edgeService,
+            $this->getVertexService($canvasService, $graphService, $edgeService, $intersectionService),
+        );
+    }
+
     protected static function getSimpleTriangle(int $shift = 0): array
     {
         return self::shiftVertexes($shift, require __DIR__ . '/Cases/Graphs/SimpleTriangle.php');
@@ -97,6 +119,16 @@ abstract class AbstractTestCase extends TestCase
     protected static function getTriangleInTriangleInTriangle(int $shift = 0): array
     {
         return self::shiftVertexes($shift, require __DIR__ . '/Cases/Graphs/TriangleInTriangleInTriangle.php');
+    }
+
+    protected static function getBig1(int $shift = 0): array
+    {
+        return self::shiftVertexes($shift, require __DIR__ . '/Cases/Graphs/Big1.php');
+    }
+
+    protected static function getSmallTree(int $shift = 0): array
+    {
+        return self::shiftVertexes($shift, require __DIR__ . '/Cases/Graphs/SmallTree.php');
     }
 
     protected static function shiftVertexes(int $shift, array $connections): array
@@ -163,7 +195,7 @@ abstract class AbstractTestCase extends TestCase
     {
         $sizes = [];
         $maxSize = 0;
-        $row = [' '];
+        $row = [];
 
         $vertexes = $graph->getVertexes();
         sort($vertexes);
@@ -176,16 +208,17 @@ abstract class AbstractTestCase extends TestCase
         }
 
         $stringRow = implode('|', $row);
-        $result = [$stringRow];
+        $result = [str_pad('', $maxSize) => $stringRow];
 
         foreach ($vertexes as $vertexA) {
-            $row = [str_pad((string) $vertexA, $maxSize)];
+            $row = [];
+            $key = str_pad((string) $vertexA, $maxSize);
 
             foreach ($vertexes as $pos => $vertexB) {
                 $row[] = str_pad($graph->hasValue($vertexA, $vertexB) ? (string) $graph->getValue($vertexA, $vertexB) : '', $sizes[$pos]);
             }
 
-            $result[] = implode('|', $row);
+            $result[$key] = implode('|', $row);
         }
 
         return $result;
