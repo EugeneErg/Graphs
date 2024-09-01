@@ -51,8 +51,9 @@ final class EdgeServiceTest extends AbstractTestCase
     public function testFindShortEdge(array $branch, int $vertexA, int $vertexB, array $expected): void
     {
         $graph = $this->getGraphService()->graphToDirection($this->getGraphService()->createFromConnections($branch));
+        $true = true;
 
-        $actual = $this->runPrivateMethod([$this->getEdgeService(), 'findShortEdge'], $graph, $vertexA, $vertexB, true);
+        $actual = $this->runPrivateMethod([$this->getEdgeService(), 'findShortEdge'], $graph, $vertexA, $vertexB, $true);
 
         self::assertEquals($expected, $actual);
     }
@@ -81,13 +82,14 @@ final class EdgeServiceTest extends AbstractTestCase
     public function testGetInnerVertexes(array $branch, array $path, array $outerVertexes, array $expected): void
     {
         $graph = $this->getGraphService()->graphToDirection($this->getGraphService()->createFromConnections($branch));
+        $slice = new SliceAggregate(new ZeroSlice());
 
         $actual = $this->runPrivateMethod(
             [$this->getEdgeService(), 'getInnerVertexes'],
             $graph,
             $path,
             $outerVertexes,
-            new SliceAggregate(new ZeroSlice()),
+            $slice,
         );
 
         self::assertEquals($expected, $actual);
