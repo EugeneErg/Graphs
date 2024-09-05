@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Tests;
 
@@ -102,7 +102,7 @@ final class IntersectionServiceTest extends AbstractTestCase
                     ),
                 ],
                 [
-                    ' |0|1',//todo why
+                    ' |0|1', //todo why
                     '0| |1',
                     '1|1| ',
                 ],

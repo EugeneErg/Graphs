@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace EugeneErg\Graphs\Services;
 
@@ -45,8 +45,8 @@ readonly class IntersectionService
             foreach ($defined as $vertexA => $isOuter) {
                 foreach ($matrix->getConnection($vertexA) ?? [] as $vertexB => $value) {
                     if (isset($undefined[$vertexB])) {
-                        $undefined[$vertexB]->setIsOuter(!$isOuter);
-                        $newDefined[$vertexB] = !$isOuter;
+                        $undefined[$vertexB]->setIsOuter(! $isOuter);
+                        $newDefined[$vertexB] = ! $isOuter;
 
                         if ($isOuter) {
                             $result[] = $undefined[$vertexB];
@@ -159,11 +159,11 @@ readonly class IntersectionService
             $aIsConnected = $connectionsA[$vertex] ?? false;
             $bIsConnected = $connectionsB[$vertex] ?? false;
 
-            if (!$aIsConnected && !$bIsConnected) {
+            if (! $aIsConnected && ! $bIsConnected) {
                 continue;
             }
 
-            if (!$can) {
+            if (! $can) {
                 $can = 3 - (int) $aIsConnected - ($bIsConnected ? 2 : 0);
                 $step += $can === 0;
             } elseif ($step === 1) {

@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Tests;
 
@@ -23,7 +23,6 @@ use ReflectionMethod;
 
 abstract class AbstractTestCase extends TestCase
 {
-
     protected function getCanvasService(): CanvasService
     {
         return new CanvasService();
@@ -88,47 +87,47 @@ abstract class AbstractTestCase extends TestCase
 
     protected static function getSimpleTriangle(int $shift = 0): array
     {
-        return self::shiftVertexes($shift, require __DIR__ . '/Cases/Graphs/SimpleTriangle.php');
+        return self::shiftVertexes($shift, require __DIR__.'/Cases/Graphs/SimpleTriangle.php');
     }
 
     protected static function getLine(int $shift = 0): array
     {
-        return self::shiftVertexes($shift, require __DIR__ . '/Cases/Graphs/Line.php');
+        return self::shiftVertexes($shift, require __DIR__.'/Cases/Graphs/Line.php');
     }
 
     protected static function getThreeLines(int $shift = 0): array
     {
-        return self::shiftVertexes($shift, require __DIR__ . '/Cases/Graphs/ThreeConnectedLInes.php');
+        return self::shiftVertexes($shift, require __DIR__.'/Cases/Graphs/ThreeConnectedLInes.php');
     }
 
     protected static function getDot(int $shift = 0): array
     {
-        return self::shiftVertexes($shift, require __DIR__ . '/Cases/Graphs/Dot.php');
+        return self::shiftVertexes($shift, require __DIR__.'/Cases/Graphs/Dot.php');
     }
 
     protected static function getRectangle(int $shift = 0): array
     {
-        return self::shiftVertexes($shift, require __DIR__ . '/Cases/Graphs/SimpleRectangle.php');
+        return self::shiftVertexes($shift, require __DIR__.'/Cases/Graphs/SimpleRectangle.php');
     }
 
     protected static function getTriangleInTriangle(int $shift = 0): array
     {
-        return self::shiftVertexes($shift, require __DIR__ . '/Cases/Graphs/TriangleInTriangle.php');
+        return self::shiftVertexes($shift, require __DIR__.'/Cases/Graphs/TriangleInTriangle.php');
     }
 
     protected static function getTriangleInTriangleInTriangle(int $shift = 0): array
     {
-        return self::shiftVertexes($shift, require __DIR__ . '/Cases/Graphs/TriangleInTriangleInTriangle.php');
+        return self::shiftVertexes($shift, require __DIR__.'/Cases/Graphs/TriangleInTriangleInTriangle.php');
     }
 
     protected static function getBig1(int $shift = 0): array
     {
-        return self::shiftVertexes($shift, require __DIR__ . '/Cases/Graphs/Big1.php');
+        return self::shiftVertexes($shift, require __DIR__.'/Cases/Graphs/Big1.php');
     }
 
     protected static function getSmallTree(int $shift = 0): array
     {
-        return self::shiftVertexes($shift, require __DIR__ . '/Cases/Graphs/SmallTree.php');
+        return self::shiftVertexes($shift, require __DIR__.'/Cases/Graphs/SmallTree.php');
     }
 
     protected static function shiftVertexes(int $shift, array $connections): array
@@ -233,7 +232,7 @@ abstract class AbstractTestCase extends TestCase
         return $list;
     }
 
-    protected function getIntersectService(?CanvasService $canvasService = null,): IntersectionService
+    protected function getIntersectService(?CanvasService $canvasService = null): IntersectionService
     {
         return new IntersectionService($canvasService ?? $this->getCanvasService());
     }
@@ -281,7 +280,6 @@ abstract class AbstractTestCase extends TestCase
         $outerVertexes = [];
 
         for ($i = 0; $i < $size; $i++) {
-
         }
 
         return new Graph($connections, range(0, $size - 1));

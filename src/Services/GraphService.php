@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace EugeneErg\Graphs\Services;
 
@@ -47,7 +47,7 @@ readonly class GraphService
         $vertexes = array_keys($connections);
 
         foreach ($vertexes as $vertexA) {
-            if (!is_int($vertexA)) {
+            if (! is_int($vertexA)) {
                 throw new InvalidVertexValueException();
             }
 
@@ -58,12 +58,12 @@ readonly class GraphService
                     throw new InvalidConnectionException('Is direction graph.');
                 }
 
-                if (!$connectionABExists) {
+                if (! $connectionABExists) {
                     continue;
                 }
 
                 if ($vertexA === $vertexB) {
-                    throw new InvalidConnectionException('todo message 1');//todo
+                    throw new InvalidConnectionException('todo message 1'); //todo
                 }
 
                 if ($connections[$vertexA][$vertexB] !== true) {
@@ -98,7 +98,10 @@ readonly class GraphService
             return [$graph];
         }
 
-        return array_map(fn (array $vertexes) => $this->createSubGraph($graph, $vertexes), $operations);
+        /** @var Graph[] $result */
+        $result = array_map(fn (array $vertexes) => $this->createSubGraph($graph, $vertexes), $operations);
+
+        return $result;
     }
 
     /**
@@ -117,7 +120,7 @@ readonly class GraphService
                 $vertexB = $vertexes[$posB];
 
                 if ($graph->hasValue($vertexA, $vertexB)) {
-                    $connections[$vertexA][$vertexB] = $connections[$vertexB][$vertexA] = $graph->getValue($vertexA,$vertexB);
+                    $connections[$vertexA][$vertexB] = $connections[$vertexB][$vertexA] = $graph->getValue($vertexA, $vertexB);
                 }
             }
         }
@@ -129,6 +132,10 @@ readonly class GraphService
     {
         $connections = [];
 
+        /**
+         * @var int $vertexA
+         * @var array<bool|int> $connection
+         */
         foreach ($graph->getConnections() as $vertexA => $connection) {
             foreach ($connection as $vertexB => $value) {
                 $connections[$vertexA][$vertexB] = (int) $value;

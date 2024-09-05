@@ -1,13 +1,13 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace EugeneErg\Graphs\ValueObjects;
 
 interface GraphInterface
 {
     /**
-     * @param array $connections
+     * @param array<int, array<int, mixed>> $connections
      * @param int[] $vertexes
      */
     public function __construct(array $connections, array $vertexes);
@@ -15,8 +15,14 @@ interface GraphInterface
     /** @return int[] */
     public function getVertexes(): array;
 
+    /**
+     * @return array<int, array<int, mixed>>
+     */
     public function getConnections(): array;
 
+    /**
+     * @return array<int, mixed>|null
+     */
     public function getConnection(int $vertex): ?array;
 
     public function hasConnection(int $vertexA): bool;

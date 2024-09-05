@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Tests;
 
@@ -161,11 +161,11 @@ final class EdgeServiceTest extends AbstractTestCase
                     new TreeEdge(new Edge([2, 0, 3, 5])),
                     new TreeEdge(new Edge([4, 3, 5]), [
                         new TreeEdge(new Edge([4, 3, 6, 7])),
-                        new TreeEdge(new Edge([5,4, 7, 8])),
+                        new TreeEdge(new Edge([5, 4, 7, 8])),
                         new TreeEdge(new Edge([6, 7, 8])),
                         new TreeEdge(new Edge([3, 6, 8, 5])),
                     ]),
-                ])
+                ]),
             ],
         ];
     }
@@ -273,7 +273,7 @@ final class EdgeServiceTest extends AbstractTestCase
                     1 => [0 => null, 2 => null, 4 => null],
                     2 => [0 => null, 1 => null, 5 => null],
                 ],
-            ]
+            ],
         ];
     }
 

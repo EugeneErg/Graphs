@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace EugeneErg\Graphs\Services;
 
@@ -25,11 +25,14 @@ readonly class PlanarService
 
     /**
      * @param true[][] $connections
+     *
+     * @return Edge[][]
+     *
      * @throws InvalidConnectionException
      * @throws InvalidVertexValueException
      * @throws Exception
      */
-    public function connectionsToSwg(array $connections, SliceAggregate $sliceAggregate)
+    public function connectionsToSwg(array $connections, SliceAggregate $sliceAggregate): array
     {
         $graph = $this->graphService->createFromConnections($connections);
         $disconnectedGraphs = $this->graphService->splitGraphOnDisconnected($graph);

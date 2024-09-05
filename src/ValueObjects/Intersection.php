@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace EugeneErg\Graphs\ValueObjects;
 
@@ -22,6 +22,6 @@ final readonly class Intersection
 
     public function setIsOuter(bool $isOuter): void
     {
-        $this->isOuter = $isOuter;
+        $this->isOuter = $isOuter;/** @phpstan-ignore-line */
     }
 }

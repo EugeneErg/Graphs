@@ -20,5 +20,5 @@ return [
     16 => [10 => true, 15 => true, 17 => true],
     17 => [11 => true, 16 => true, 18 => true],
     18 => [12 => true, 17 => true, 19 => true],
-    19 => [13 => true, 18 => true]
+    19 => [13 => true, 18 => true],
 ];

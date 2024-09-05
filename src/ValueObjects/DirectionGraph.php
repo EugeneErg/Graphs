@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace EugeneErg\Graphs\ValueObjects;
 
@@ -18,7 +18,7 @@ final class DirectionGraph implements GraphInterface
     {
         unset($this->connections[$vertexA][$vertexB]);
 
-        if (!$direction) {
+        if (! $direction) {
             unset($this->connections[$vertexB][$vertexA]);
         }
     }
@@ -53,7 +53,7 @@ final class DirectionGraph implements GraphInterface
         return $this->connections[$vertex] ?? null;
     }
 
-    public function setValue(int $vertexA, int $vertexB, mixed $value, bool $direction = false): void
+    public function setValue(int $vertexA, int $vertexB, int $value, bool $direction = false): void
     {
         $this->connections[$vertexA][$vertexB] = $value;
 

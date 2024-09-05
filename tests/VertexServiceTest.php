@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Tests;
 
@@ -117,7 +117,7 @@ final class VertexServiceTest extends AbstractTestCase
                     new Edge([0, 1, 2, 3]),
                     new Edge([4, 5, 6, 0]),
                 ],
-            ]
+            ],
         ];
     }
 
@@ -250,7 +250,7 @@ final class VertexServiceTest extends AbstractTestCase
                 'root' => 2,
                 'edgeException' => 0,
                 'edgeMap' => [1 => []],
-                'expected' => []
+                'expected' => [],
             ],
             'Move edges from branch to root without exceptions' => [
                 'branch' => 1,
@@ -263,8 +263,8 @@ final class VertexServiceTest extends AbstractTestCase
                             1 => 'edgeA2',
                         ],
                         'B' => [
-                            0 => 'edgeB1'
-                        ]
+                            0 => 'edgeB1',
+                        ],
                     ],
                 ],
                 'expected' => [
@@ -274,10 +274,10 @@ final class VertexServiceTest extends AbstractTestCase
                             1 => 'edgeA2',
                         ],
                         'B' => [
-                            0 => 'edgeB1'
-                        ]
+                            0 => 'edgeB1',
+                        ],
                     ],
-                ]
+                ],
             ],
             'Move edges with an exception' => [
                 'branch' => 1,
@@ -288,11 +288,11 @@ final class VertexServiceTest extends AbstractTestCase
                         'A' => [
                             0 => 'edgeA1',
                             1 => 'edgeA2',
-                            2 => 'edgeA3'
+                            2 => 'edgeA3',
                         ],
                         'B' => [
-                            0 => 'edgeB1'
-                        ]
+                            0 => 'edgeB1',
+                        ],
                     ],
                 ],
                 'expected' => [
@@ -304,13 +304,13 @@ final class VertexServiceTest extends AbstractTestCase
                     2 => [
                         'A' => [
                             0 => 'edgeA1',
-                            2 => 'edgeA3'
+                            2 => 'edgeA3',
                         ],
                         'B' => [
-                            0 => 'edgeB1'
-                        ]
-                    ]
-                ]
+                            0 => 'edgeB1',
+                        ],
+                    ],
+                ],
             ],
             'All edges are exceptions' => [
                 'branch' => 1,
@@ -319,17 +319,17 @@ final class VertexServiceTest extends AbstractTestCase
                 'edgeMap' => [
                     1 => [
                         'A' => [
-                            0 => 'edgeA1'
-                        ]
+                            0 => 'edgeA1',
+                        ],
                     ],
                 ],
                 'expected' => [
                     1 => [
                         'A' => [
-                            0 => 'edgeA1'
-                        ]
+                            0 => 'edgeA1',
+                        ],
                     ],
-                ]
+                ],
             ],
             'Move edges when only one edge is in the map' => [
                 'branch' => 1,
@@ -338,18 +338,18 @@ final class VertexServiceTest extends AbstractTestCase
                 'edgeMap' => [
                     1 => [
                         'A' => [
-                            0 => 'edgeA1'
-                        ]
+                            0 => 'edgeA1',
+                        ],
                     ],
                 ],
                 'expected' => [
                     2 => [
                         'A' => [
-                            0 => 'edgeA1'
-                        ]
+                            0 => 'edgeA1',
+                        ],
                     ],
-                ]
-            ]
+                ],
+            ],
         ];
     }
 }

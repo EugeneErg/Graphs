@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Tests;
 
@@ -91,7 +91,8 @@ final class GraphServiceTest extends AbstractTestCase
 
         $actual = $this->getGraphService()->createFromConnections($connections);
 
-        self:;self::assertEquals(new Graph($connections, [0, 1, 2]), $actual);
+        self:;
+        self::assertEquals(new Graph($connections, [0, 1, 2]), $actual);
     }
 
     /**
@@ -187,7 +188,7 @@ final class GraphServiceTest extends AbstractTestCase
         $center = intdiv(count($graphB->vertexes) + 1, 2);
 
         foreach ($linesA as $row => $lineA) {
-            $result[] = $lineA . ($row === $center ? ' != ' : '    ') . $linesB[$row];
+            $result[] = $lineA.($row === $center ? ' != ' : '    ').$linesB[$row];
         }
 
         return implode("\r\n", $result);

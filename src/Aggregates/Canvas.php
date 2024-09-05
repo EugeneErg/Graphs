@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace EugeneErg\Graphs\Aggregates;
 
@@ -8,6 +8,7 @@ use EugeneErg\Graphs\ValueObjects\GraphInterface;
 
 final class Canvas
 {
+    /** @var int[] */
     private array $pixels = [];
 
     public function __construct(public readonly GraphInterface $graph)

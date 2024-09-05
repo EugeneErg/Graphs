@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace EugeneErg\Graphs\Services;
 
@@ -32,6 +32,7 @@ readonly class TreeService
         $articulationVertexes = $articulationVertexesAggregate->articulationVertexes;
         $result = [];
         $this->split($articulationVertexes, new Canvas($articulationVertexesAggregate->graph), $result);
+        /** @var DirectionGraph[] $branches */
         $branches = array_map(
             fn (array $vertexes) => $this->graphService->createSubGraph($directionGraph, $vertexes),
             $result,
@@ -39,6 +40,7 @@ readonly class TreeService
         $connections = [];
         $graphVertexes = [];
 
+        /** @var int $branchNumber */
         foreach ($result as $branchNumber => $vertexes) {
             $graphVertexes[] = $branchNumber;
 
@@ -49,6 +51,7 @@ readonly class TreeService
 
         $matrix = [];
 
+        /** @var int $vertex */
         foreach ($connections as $vertex => $subBranches) {
             foreach ($subBranches as $branchA) {
                 foreach ($subBranches as $branchB) {
@@ -62,6 +65,10 @@ readonly class TreeService
         return new Tree($articulationVertexesAggregate->graph, $branches, new DirectionGraph($matrix, $graphVertexes));
     }
 
+    /**
+     * @param int[] $articulationVertex
+     * @param int[] $result
+     */
     private function split(
         array &$articulationVertex,
         Canvas $canvas,
@@ -72,14 +79,14 @@ readonly class TreeService
         $hasResult = false;
 
         foreach ($articulationVertex as $pos => $vertexA) {
-            if (!$canvas->isPixel($vertexA, $maxColor)) {
+            if (! $canvas->isPixel($vertexA, $maxColor)) {
                 continue;
             }
 
             unset($articulationVertex[$pos]);
 
-            foreach($canvas->graph->getConnection($vertexA) ?? [] as $vertexB => $value) {
-                if (!$canvas->isPixel($vertexB, $maxColor)) {
+            foreach ($canvas->graph->getConnection($vertexA) ?? [] as $vertexB => $value) {
+                if (! $canvas->isPixel($vertexB, $maxColor)) {
                     continue;
                 }
 
@@ -88,7 +95,7 @@ readonly class TreeService
                 $vertexes = $this->canvasService->fill($canvas, $vertexB, $color);
                 $vertexes[] = $vertexA;
 
-                if (!$this->split($articulationVertex, $canvas, $result, $color)) {
+                if (! $this->split($articulationVertex, $canvas, $result, $color)) {
                     $result[] = $vertexes;
                 }
             }

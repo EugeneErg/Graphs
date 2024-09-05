@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace EugeneErg\Graphs\Aggregates;
 
@@ -12,7 +12,10 @@ final readonly class SliceAggregate
     {
     }
 
-    public function getKey(array $values): string|int
+    /**
+     * @param mixed[] $values
+     */
+    public function getKey(array $values): string|int|null
     {
         $position = $this->slice->getNextValue(count($values));
         $keyValue = array_slice($values, $position, 1, true);

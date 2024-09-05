@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace EugeneErg\Graphs\Services;
 
@@ -37,11 +37,12 @@ readonly class EdgeService
 
         $hasOuter = $outerEdge !== null;
         $outerEdge = $outerEdge ?? [];
+        /** @var int $edgeVertexesKey */
         $edgeVertexesKey = $slice->getKey($branch->getVertexes());
         $edgeVertexes = $hasOuter ? array_flip($outerEdge) : [$branch->getVertex($edgeVertexesKey) => 0];
         $outerVertexes = array_fill_keys($hasOuter ? $outerEdge : [$branch->getVertex($edgeVertexesKey)], true);
         $resultChildren = [];
-        $first = !$hasOuter;
+        $first = ! $hasOuter;
         $needOuter = false;
         $finish = false;
 
@@ -50,7 +51,7 @@ readonly class EdgeService
                 unset($edgeVertexes[$vertexA]);
 
                 foreach ($branch->getConnection($vertexA) ?? [] as $vertexB => $value) {
-                    if (($value !== 1 || $needOuter) && ($value !== 2 || !$needOuter)) {
+                    if (($value !== 1 || $needOuter) && ($value !== 2 || ! $needOuter)) {
                         continue;
                     }
 
@@ -79,7 +80,7 @@ readonly class EdgeService
                     $innerVertexes = $this->getInnerVertexes($branch, $path, $outerVertexes, $slice);
 
                     if (
-                        $first && !$hasOuter
+                        $first && ! $hasOuter
                         && count($innerVertexes) + count($path) === count($branch->getVertexes())
                     ) {
                         $innerVertexes = [];
@@ -88,7 +89,7 @@ readonly class EdgeService
                     $first = false;
                     $flipPath = array_flip($path);
 
-                    if (!$needOuter || $hasOuter) {
+                    if (! $needOuter || $hasOuter) {
                         if ($innerVertexes === []) {
                             $newEdge = new Edge($path);
                             $resultChildren[] = new TreeEdge($newEdge);
@@ -119,7 +120,7 @@ readonly class EdgeService
 
             $edgeVertexes = array_flip($branch->vertexes);
             $needOuter = true;
-        } while (!$finish);
+        } while (! $finish);
 
         if ($outerEdge === []) {
             throw new LogicException('Is not planar graph');
@@ -136,6 +137,7 @@ readonly class EdgeService
         if ($first) {
             $graph->unsetValue($vertexB, $vertexA, true);
         } else {
+            /** @var int $value */
             foreach ($graph->getConnection($vertexA) ?? [] as $vertex => $value) {
                 if ($value === 1) {
                     $graph->unsetValue($vertex, $vertexA, true);
@@ -145,6 +147,7 @@ readonly class EdgeService
 
         $result = $this->findShortPath($graph, $vertexA, $vertexB);
 
+        /** @var int $value */
         foreach ($graph->getConnection($vertexA) ?? [] as $vertex => $value) {
             $graph->setValue($vertex, $vertexA, $value, true);
         }
@@ -163,6 +166,7 @@ readonly class EdgeService
 
         for ($step = 0; $step < count($steps); $step++) {
             foreach ($steps[$step] as $currentVertex => $prevVertex) {
+                /** @var bool $currentValue */
                 $currentValue = !empty($values[$currentVertex]);
                 unset($values[$currentVertex]);
 
@@ -170,14 +174,14 @@ readonly class EdgeService
                     $this->canvasService->setPixels($canvas, [$vertexA], 1);
                     $steps[$step + 1][$vertexA] = $currentVertex;
 
-                    break(2);
+                    break 2;
                 }
 
                 foreach ($graph->getConnection($currentVertex) ?? [] as $nextVertex => $value) {
                     if (
                         $canvas->isPixel($nextVertex, 0)
                         && (
-                            (!$currentValue && $value !== 3)
+                            (! $currentValue && $value !== 3)
                             || ($currentValue && $value === 2)
                         )
                     ) {
@@ -201,7 +205,9 @@ readonly class EdgeService
 
         for ($step = count($steps) - 1; $step > 0; $step--) {
             $currentVertex = $steps[$step][$currentVertex];
-            $result[] = $currentVertex;
+            if ($currentVertex !== null) {
+                $result[] = $currentVertex;
+            }
         }
 
         return $result;

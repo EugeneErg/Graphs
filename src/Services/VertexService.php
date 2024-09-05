@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace EugeneErg\Graphs\Services;
 
@@ -20,9 +20,9 @@ readonly class VertexService
      * @param Edge[][] $vertexes
      * @return Edge[]
      */
-    public function mergeTree(array $vertexes, DirectionGraph $connections, SliceAggregate $slice): array
+    public function mergeTree(array $vertexes, DirectionGraph $treeGraph, SliceAggregate $slice): array
     {
-        if ($connections->vertexes === []) {
+        if ($treeGraph->vertexes === []) {
             return $vertexes[0];
         }
 
@@ -33,11 +33,9 @@ readonly class VertexService
         $addToEdgeList = [];
 
         foreach ($vertexes as $branch => $edges) {
-            $edgeMap[$branch] = $this->addEdgeToMap(
-                $edges,
-                $connections->getConnection($branch),
-                $lastNumber,
-            );
+            /** @var int[] $connections */
+            $connections = $treeGraph->getConnection($branch) ?? [];
+            $edgeMap[$branch] = $this->addEdgeToMap($edges, $connections, $lastNumber);
 
             if (count($edges) === 1 && count($edges[0]->vertexes) > 2) {
                 $addToEdgeList[] = $edges[0];
@@ -52,16 +50,21 @@ readonly class VertexService
             array_push($edgeLists, ...$addToEdgeList);
         }
 
+        /** @var int $root */
         $root = $slice->getKey($vertexes);
-        $graph = $this->graphService->direct($connections, $root);
+        $graph = $this->graphService->direct($treeGraph, $root);
+        /** @var int[] $connections */
         $connections = $graph->getConnection($root) ?? [];
 
         while (null !== $branch = array_key_first($connections)) {
+            /** @var int $branch */
             $vertex = $connections[$branch];
             unset($connections[$branch]);
+            /** @var int[] $connections */
             $connections = array_replace($connections, $graph->getConnection($branch) ?? []);
             $edgeNumberA = $slice->getKey($edgeMap[$root][$vertex]);
             $edgeA = $edgeMap[$root][$vertex][$edgeNumberA];
+            /** @var int $edgeNumberB */
             $edgeNumberB = $slice->getKey($edgeMap[$branch][$vertex]);
             $edgeB = $edgeMap[$branch][$vertex][$edgeNumberB];
             $countAIsW = count($edgeA->vertexes) === 2;
@@ -121,8 +124,10 @@ readonly class VertexService
 
     private function getEdgeFromWW(int $vertex, Edge $edgeA, Edge $edgeB): Edge
     {
-        $posA = array_search($vertex, $edgeA->vertexes, true);
-        $posB = array_search($vertex, $edgeB->vertexes, true);
+        /** @var int $posA */
+        $posA = $edgeA->getVertexPosition($vertex);
+        /** @var int $posB */
+        $posB = $edgeB->getVertexPosition($vertex);
         $partA = $this->edgeService->getPartEdge($edgeA, $posA + 1, count($edgeA->vertexes) >> 1);
         $partB = $this->edgeService->getPartEdge($edgeB, $posB, (count($edgeB->vertexes) >> 1) + 1);
 
@@ -138,8 +143,10 @@ readonly class VertexService
      */
     private function getEdgesFromWV(int $vertex, Edge $edgeA, Edge $edgeB): array
     {
-        $posA = array_search($vertex, $edgeA->vertexes, true);
-        $posB = array_search($vertex, $edgeB->vertexes, true);
+        /** @var int $posA */
+        $posA = $edgeA->getVertexPosition($vertex);
+        /** @var int $posB */
+        $posB = $edgeB->getVertexPosition($vertex);
         $partA = $this->edgeService->getPartEdge($edgeA, $posA + 1, count($edgeA->vertexes) >> 1);
         $partB = $this->edgeService->getPartEdge($edgeB, $posB, (count($edgeB->vertexes) >> 1) + 1);
         $partB2 = $this->edgeService->getPartEdge($edgeB, $posB, count($partB) - count($edgeB->vertexes) - 2);
@@ -156,8 +163,10 @@ readonly class VertexService
      */
     private function getEdgesFromVV(int $vertex, Edge $edgeA, Edge $edgeB): array
     {
-        $posA = array_search($vertex, $edgeA->vertexes, true);
-        $posB = array_search($vertex, $edgeB->vertexes, true);
+        /** @var int $posA */
+        $posA = $edgeA->getVertexPosition($vertex);
+        /** @var int $posB */
+        $posB = $edgeB->getVertexPosition($vertex);
         $partA = $this->edgeService->getPartEdge($edgeA, $posA + 1, count($edgeA->vertexes) >> 1);
         $partB = $this->edgeService->getPartEdge($edgeB, $posB, (count($edgeB->vertexes) >> 1) + 1);
         $partB2 = $this->edgeService->getPartEdge($edgeB, $posB, count($partB) - count($edgeB->vertexes) - 2);
