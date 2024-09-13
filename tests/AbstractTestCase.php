@@ -6,6 +6,7 @@ namespace Tests;
 
 use EugeneErg\Graphs\Exceptions\InvalidConnectionException;
 use EugeneErg\Graphs\Exceptions\InvalidVertexValueException;
+use EugeneErg\Graphs\Services\ArcService;
 use EugeneErg\Graphs\Services\CanvasService;
 use EugeneErg\Graphs\Services\EdgeService;
 use EugeneErg\Graphs\Services\GraphService;
@@ -64,12 +65,18 @@ abstract class AbstractTestCase extends TestCase
         );
     }
 
+    protected function getArcService(): ArcService
+    {
+        return new ArcService();
+    }
+
     protected function getPlanarService(
         ?CanvasService $canvasService = null,
         ?GraphService $graphService = null,
         ?TreeService $treeService = null,
         ?EdgeService $edgeService = null,
         ?IntersectionService $intersectionService = null,
+        ?ArcService $arcService = null,
     ): PlanarService {
         $canvasService ??= $this->getCanvasService();
         $graphService ??= $this->getGraphService($canvasService);
@@ -82,6 +89,7 @@ abstract class AbstractTestCase extends TestCase
             $treeService,
             $edgeService,
             $this->getVertexService($canvasService, $graphService, $edgeService, $intersectionService),
+            $arcService ?? $this->getArcService(),
         );
     }
 

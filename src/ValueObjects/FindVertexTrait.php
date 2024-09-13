@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace EugeneErg\Graphs\ValueObjects;
 
@@ -13,7 +13,7 @@ trait FindVertexTrait
     {
         $result = $this->findVertexPosition($vertex);
 
-        if (!is_int($result)) {
+        if (! is_int($result)) {
             throw new \RuntimeException('Vertex not found.');
         }
 

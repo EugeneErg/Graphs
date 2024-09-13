@@ -22,6 +22,6 @@ final readonly class Intersection
 
     public function setIsOuter(bool $isOuter): void
     {
-        $this->isOuter = $isOuter;/** @phpstan-ignore-line */
+        $this->isOuter = $isOuter; /** @phpstan-ignore-line */
     }
 }

@@ -23,6 +23,7 @@ final readonly class ArcService
      */
     public function createArcs(array $edges, Edge $outerEdge): array
     {
+        //var_dump($outerEdge, $edges);die;
         /** @var Arc[] $arcs */
         $arcs = [];
         /** @var Trouble[] $troubleVertexes */
@@ -126,6 +127,8 @@ final readonly class ArcService
                         }
                     }
 
+                    //var_dump($replacement);die;
+
                     if ($replacement->length === 2 || isset($troubles[$fromVertex][$toVertex])) {
                         if (isset($troubles[$fromVertex][$toVertex])) {
                             for ($i = 1; $i < count($replaced) - 1; $i++) {
@@ -145,6 +148,8 @@ final readonly class ArcService
                             $troubleVertexes[$replacement->vertexes[$i]] = $troubles[$fromVertex][$toVertex];
                         }
                     } else {
+                        //var_dump('p1', $replacement->vertexes);die;
+
                         $arcs[] = new Arc(
                             new GravityVertexes(...array_slice($replaced, count($replaced) >> 1, 1)),
                             [$replacement->vertexes],
@@ -227,7 +232,7 @@ final readonly class ArcService
 
             if (! $isRightDirection) {
                 $shiftA++;
-                $shiftB = $edgeB->findVertexPosition($edgeA->getVertexPosition($shiftA));
+                $shiftB = $edgeB->findVertexPosition($edgeA->getVertex($shiftA));
 
                 if ($shiftB === null) {
                     return null;
@@ -240,13 +245,13 @@ final readonly class ArcService
                 return null;
             }
 
-            ['shiftA' => $shiftA, 'shiftB' => $shiftB, 'isRightDirection' => $isRightDirection] = $shiftsAndDirection;
+            ['shiftB' => $shiftA, 'shiftA' => $shiftB, 'isRightDirection' => $isRightDirection] = $shiftsAndDirection;
         }
 
         for ($i = 0; $i < $intersectCount; $i++) {
-            $vertex = $edgeA->getVertexPosition($shiftA + $i);
+            $vertex = $edgeA->getVertex($shiftA + $i);
 
-            if ($vertex !== $edgeB->getVertexPosition($shiftB + ($isRightDirection ? $i : -$i))) {
+            if ($vertex !== $edgeB->getVertex($shiftB + ($isRightDirection ? $i : -$i))) {
                 return null;
             }
         }
@@ -279,7 +284,7 @@ final readonly class ArcService
             return null;
         }
 
-        $isRightDirection = $edgeA->getVertexPosition($shiftA + 1) === $edgeB->getVertexPosition($shiftB + 1);
+        $isRightDirection = $edgeA->getVertex($shiftA + 1) === $edgeB->getVertex($shiftB + 1);
 
         return ['shiftA' => $shiftA, 'shiftB' => $shiftB, 'isRightDirection' => $isRightDirection];
     }
@@ -494,6 +499,8 @@ final readonly class ArcService
      */
     private function applySolution(array $solutions, array $vertexes, array &$arcs, SubGraph $subGraph): array
     {
+        //var_dump($solutions, $vertexes, $arcs, $subGraph);die();
+
         $mainVertexes = [$vertexes];
         /** @var int[] $mainGravityVertexes */
         $mainGravityVertexes = [];
@@ -537,7 +544,7 @@ final readonly class ArcService
                 $rightPart1 = $rightPath;
                 array_unshift($rightPart1, array_pop($mainVertexes[count($mainVertexes) - 1]));
                 $mainVertexes = array_merge($mainVertexes, [$rightPart1]);
-                $innerEdges = array_diff($solution->trouble->edges, $innerEdges);
+                $innerEdges = array_udiff($solution->trouble->edges, $innerEdges, static fn (mixed $a, mixed $b) => $a <> $b);
                 $graphs[] = new SubGraph(new Edge(array_merge($rightArc, $rightPath)), $innerEdges);
             } else {
                 $newArcs[] = [$solution->trouble->vertexes];
@@ -557,6 +564,7 @@ final readonly class ArcService
         $mainGravityVertexes[$last] = $last;
 
         foreach ($newArcs as $arc) {
+            //var_dump('p2', array_filter($arc, fn (array $subArc) => $subArc !== []));die;
             $arcs[] = new Arc(
                 new GravityVertexes(...$mainGravityVertexes),
                 array_filter($arc, fn (array $subArc) => $subArc !== []),
@@ -588,6 +596,7 @@ final readonly class ArcService
         $result = [];
 
         foreach ($troubles as $trouble) {
+            //var_dump('p2', $trouble->vertexes);die;
             $arcs[] = new Arc(new GravityVertexes(...$mainGravityVertexes), [$trouble->vertexes]);
             $result[] = new SubGraph(new Edge($trouble->vertexes), $trouble->edges);
         }

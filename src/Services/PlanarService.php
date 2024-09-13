@@ -8,7 +8,9 @@ use EugeneErg\Graphs\Aggregates\ArticulationVertexesAggregate;
 use EugeneErg\Graphs\Aggregates\SliceAggregate;
 use EugeneErg\Graphs\Exceptions\InvalidConnectionException;
 use EugeneErg\Graphs\Exceptions\InvalidVertexValueException;
+use EugeneErg\Graphs\ValueObjects\Arc;
 use EugeneErg\Graphs\ValueObjects\Edge;
+use EugeneErg\Graphs\ValueObjects\Topology;
 use EugeneErg\Graphs\ValueObjects\Tree;
 use EugeneErg\Graphs\ValueObjects\TreeEdge;
 use Exception;
@@ -20,13 +22,14 @@ readonly class PlanarService
         private TreeService $treeService,
         private EdgeService $edgeService,
         private VertexService $vertexService,
+        private ArcService $arcService,
     ) {
     }
 
     /**
      * @param true[][] $connections
      *
-     * @return Edge[][]
+     * @return Topology[]
      *
      * @throws InvalidConnectionException
      * @throws InvalidVertexValueException
@@ -42,13 +45,17 @@ readonly class PlanarService
             $trees[] = $this->treeService->fromConnectionGraph((new ArticulationVertexesAggregate($graph)));
         }
 
-        $edgesByTree = [];
+        $topologies = [];
 
         foreach ($trees as $treePos => $tree) {
-            $edgesByTree[$treePos] = $this->treeToSwg($tree, $sliceAggregate);
+            $edges = $this->treeToSwg($tree, $sliceAggregate);
+            $outerKey = $sliceAggregate->getKey($edges);
+            $outerEdge = $edges[$outerKey];
+            unset($edges[$outerKey]);
+            $topologies[$treePos] = new Topology($outerEdge, $this->arcService->createArcs($edges, $outerEdge));
         }
 
-        return $edgesByTree;
+        return $topologies;
     }
 
     /**

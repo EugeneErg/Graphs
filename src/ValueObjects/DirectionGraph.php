@@ -57,7 +57,7 @@ final class DirectionGraph implements GraphInterface
     {
         $this->connections[$vertexA][$vertexB] = $value;
 
-        if (!$direction) {
+        if (! $direction) {
             $this->connections[$vertexB][$vertexA] = $value;
         }
     }

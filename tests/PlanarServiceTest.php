@@ -7,7 +7,10 @@ namespace Tests;
 use EugeneErg\Graphs\Aggregates\SliceAggregate;
 use EugeneErg\Graphs\Exceptions\InvalidConnectionException;
 use EugeneErg\Graphs\Exceptions\InvalidVertexValueException;
+use EugeneErg\Graphs\ValueObjects\Arc;
 use EugeneErg\Graphs\ValueObjects\Edge;
+use EugeneErg\Graphs\ValueObjects\GravityVertexes;
+use EugeneErg\Graphs\ValueObjects\Topology;
 use EugeneErg\Graphs\ValueObjects\ZeroSlice;
 
 final class PlanarServiceTest extends AbstractTestCase
@@ -27,6 +30,36 @@ final class PlanarServiceTest extends AbstractTestCase
 
     public static function getConnectionsToSwgData(): array
     {
+        return [
+            [
+                self::getBig1(),
+                [
+                    new Topology(
+                        new Edge([0, 6, 12, 18, 17, 11, 5]),
+                        [
+                            new Arc(new GravityVertexes(0, 6, 5), [[5, 4, 3, 2], [1, 7, 6]]),
+                            new Arc(new GravityVertexes(0, 6, 5), [[0, 1]]),
+                            new Arc(new GravityVertexes(6), [[7, 13, 12]]),
+                            new Arc(new GravityVertexes(1), [[2, 8, 7]]),
+                            new Arc(new GravityVertexes(2), [[3, 9, 8]]),
+                            new Arc(new GravityVertexes(3), [[4, 10, 9]]),
+                            new Arc(new GravityVertexes(4), [[11, 10]]),
+                            new Arc(new GravityVertexes(7), [[8, 14, 13]]),
+                            new Arc(new GravityVertexes(12), [[13, 19, 18]]),
+                            new Arc(new GravityVertexes(8), [[9, 15, 14]]),
+                            new Arc(new GravityVertexes(9), [[10, 16, 15]]),
+                            new Arc(new GravityVertexes(10), [[17, 16]]),
+
+                        ],
+                    ),
+                ],
+            ],
+            /*[
+                self::getSmallTree(),
+                [],
+            ],*/
+        ];
+
         return [
             [
                 self::getBig1(),

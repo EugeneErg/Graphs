@@ -167,7 +167,7 @@ readonly class EdgeService
         for ($step = 0; $step < count($steps); $step++) {
             foreach ($steps[$step] as $currentVertex => $prevVertex) {
                 /** @var bool $currentValue */
-                $currentValue = !empty($values[$currentVertex]);
+                $currentValue = ! empty($values[$currentVertex]);
                 unset($values[$currentVertex]);
 
                 if ($graph->hasValue($currentVertex, $vertexA)) {

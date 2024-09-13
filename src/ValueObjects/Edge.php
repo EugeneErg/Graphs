@@ -22,7 +22,7 @@ final readonly class Edge
         return ($offset < 0 && $offset !== -$count ? $count : 0) + ($offset % $count);
     }
 
-    public function getVertexPosition(int $offset): int
+    public function getVertex(int $offset): int
     {
         return $this->vertexes[$this->getNormalVertexNumber($offset)];
     }
@@ -37,11 +37,11 @@ final readonly class Edge
 
         if ($count < 0) {
             for ($i = 0; $i > $count; $i--) {
-                $result[] = $this->getVertexPosition($i + $offset);
+                $result[] = $this->getVertex($i + $offset);
             }
         } else {
             for ($i = 0; $i < $count; $i++) {
-                $result[] = $this->getVertexPosition($i + $offset);
+                $result[] = $this->getVertex($i + $offset);
             }
         }
 
