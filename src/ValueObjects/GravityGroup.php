@@ -13,4 +13,10 @@ final readonly class GravityGroup implements GravityInterface
     {
         $this->gravities = $gravities;
     }
+
+    /** @return GravityInterface[] */
+    public function getItems(): array
+    {
+        return $this->gravities;
+    }
 }

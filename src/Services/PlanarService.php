@@ -23,6 +23,7 @@ readonly class PlanarService
         private EdgeService $edgeService,
         private VertexService $vertexService,
         private ArcService $arcService,
+        private CoordinateService $coordinateService,
     ) {
     }
 
@@ -52,7 +53,7 @@ readonly class PlanarService
             $outerKey = $sliceAggregate->getKey($edges);
             $outerEdge = $edges[$outerKey];
             unset($edges[$outerKey]);
-            $topologies[$treePos] = new Topology($outerEdge, $this->arcService->createArcs($edges, $outerEdge));
+            $topologies[$treePos] = $this->coordinateService->getCoordinates(new Topology($outerEdge, $this->arcService->createArcs($edges, $outerEdge)), 100);
         }
 
         return $topologies;

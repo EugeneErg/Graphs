@@ -13,4 +13,10 @@ final readonly class GravityVertexes implements GravityInterface
     {
         $this->vertexes = $vertexes;
     }
+
+    /** @return int[] */
+    public function getItems(): array
+    {
+        return $this->vertexes;
+    }
 }

@@ -6,4 +6,8 @@ namespace EugeneErg\Graphs\ValueObjects;
 
 interface GravityInterface
 {
+    /**
+     * @return mixed[]
+     */
+    public function getItems(): array;
 }
