@@ -59,6 +59,11 @@ class Angle implements \JsonSerializable
         return $this->value > $angle->value;
     }
 
+    public function lessThanOrEqual(Angle $angle): bool
+    {
+        return $this->value <= $angle->value;
+    }
+
     public function greaterThanOrEqual(Angle $angle): bool
     {
         return $this->value >= $angle->value;

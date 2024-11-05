@@ -144,4 +144,50 @@ readonly class GraphService
 
         return new DirectionGraph($connections, $graph->vertexes);
     }
+
+    public function compress(Graph $graph)
+    {
+        $canvas = new Canvas($graph);
+        $resultConnections = $graph->getConnections();
+        $resultVertexes = [];
+        $hash = [];
+
+        foreach ($graph->getConnections() as $vertex => $connections) {
+            count($connections) === 2
+                ? $canvas->setPixel($vertex, 1)
+                : $resultVertexes[] = $vertex;
+        }
+
+        foreach ($graph->vertexes as $vertex) {
+            if ($canvas->getPixel($vertex) === 1) {
+                $groupVertexes = $this->canvasService->fill($canvas, $vertex, 2);
+                $resultVertexes[] = $vertex;
+
+                if (count($groupVertexes) === 1) {
+                    continue;
+                }
+
+                $connectedVertexes = [];
+
+                foreach ($groupVertexes as $vertexA) {
+                    unset($resultConnections[$vertexA]);
+                    $hash[$vertexA] = $graph->getConnection($vertexA);
+
+                    foreach ($hash[$vertexA] as $vertexB => $value) {
+                        unset($resultConnections[$vertexB][$vertexA]);
+
+                        if (isset($connectedVertexes[$vertexB])) {
+                            unset($connectedVertexes[$vertexB]);
+                        } else {
+                            $connectedVertexes[$vertexB] = $value;
+                        }
+                    }
+                }
+
+                foreach ($connectedVertexes as $vertexA => $value) {
+                    $resultConnections[$vertexA][$vertex] = $resultConnections[$vertex][$vertexA] = $value;
+                }
+            }
+        }
+    }
 }

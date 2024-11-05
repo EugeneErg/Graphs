@@ -10,6 +10,7 @@ use EugeneErg\Graphs\Exceptions\InvalidConnectionException;
 use EugeneErg\Graphs\Exceptions\InvalidVertexValueException;
 use EugeneErg\Graphs\ValueObjects\Arc;
 use EugeneErg\Graphs\ValueObjects\Edge;
+use EugeneErg\Graphs\ValueObjects\Point2D;
 use EugeneErg\Graphs\ValueObjects\Topology;
 use EugeneErg\Graphs\ValueObjects\Tree;
 use EugeneErg\Graphs\ValueObjects\TreeEdge;
@@ -30,7 +31,7 @@ readonly class PlanarService
     /**
      * @param true[][] $connections
      *
-     * @return Topology[]
+     * @return Point2D[][]
      *
      * @throws InvalidConnectionException
      * @throws InvalidVertexValueException
@@ -39,6 +40,10 @@ readonly class PlanarService
     public function connectionsToSwg(array $connections, SliceAggregate $sliceAggregate): array
     {
         $graph = $this->graphService->createFromConnections($connections);
+
+        //$this->graphService->compress($graph); вероятно сжимать двусвязные группы вершин все же не нужно,
+        // так как потом нужно искать расстояние между ними
+
         $disconnectedGraphs = $this->graphService->splitGraphOnDisconnected($graph);
         $trees = [];
 
@@ -46,17 +51,20 @@ readonly class PlanarService
             $trees[] = $this->treeService->fromConnectionGraph((new ArticulationVertexesAggregate($graph)));
         }
 
-        $topologies = [];
+        $coordinates = [];
 
         foreach ($trees as $treePos => $tree) {
             $edges = $this->treeToSwg($tree, $sliceAggregate);
             $outerKey = $sliceAggregate->getKey($edges);
             $outerEdge = $edges[$outerKey];
             unset($edges[$outerKey]);
-            $topologies[$treePos] = $this->coordinateService->getCoordinates(new Topology($outerEdge, $this->arcService->createArcs($edges, $outerEdge)), 100);
+
+            $arcs = $this->arcService->createArcs($edges, $outerEdge);
+            $treeCoordinate = $this->coordinateService->getCoordinates(new Topology($outerEdge, $arcs), 100);
+            $coordinates[$treePos] = $this->coordinateService->relaxCoordinates($outerEdge, $edges, $treeCoordinate);
         }
 
-        return $topologies;
+        return $coordinates;
     }
 
     /**
