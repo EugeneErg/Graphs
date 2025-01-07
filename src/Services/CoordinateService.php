@@ -5,21 +5,11 @@ declare(strict_types = 1);
 namespace EugeneErg\Graphs\Services;
 
 use EugeneErg\Graphs\ValueObjects\Angle;
-use EugeneErg\Graphs\ValueObjects\AngleIntersectType;
 use EugeneErg\Graphs\ValueObjects\Arc;
-use EugeneErg\Graphs\ValueObjects\Cross;
-use EugeneErg\Graphs\ValueObjects\CrossPoint;
 use EugeneErg\Graphs\ValueObjects\Edge;
 use EugeneErg\Graphs\ValueObjects\GravityInterface;
-use EugeneErg\Graphs\ValueObjects\Intersect;
-use EugeneErg\Graphs\ValueObjects\IntersectType;
-use EugeneErg\Graphs\ValueObjects\Line2D;
 use EugeneErg\Graphs\ValueObjects\Point2D;
-use EugeneErg\Graphs\ValueObjects\Radar;
-use EugeneErg\Graphs\ValueObjects\ReplaceRadarCounter;
 use EugeneErg\Graphs\ValueObjects\Topology;
-use LogicException;
-use RuntimeException;
 
 final readonly class CoordinateService
 {
@@ -142,11 +132,12 @@ final readonly class CoordinateService
      * @param Edge[] $edges
      * @return Point2D[]
      */
-    public function relaxCoordinates(Edge $outerEdge, array $edges, array &$coordinates): array
+    public function relaxCoordinates(Edge $outerEdge, array $edges, array $coordinates): array
     {
-        $outerEdge = $this->getDoubleArea($outerEdge->vertexes, $coordinates) < 0
-            ? new Edge(array_reverse($outerEdge->vertexes))
-            : $outerEdge;
+//        $outerEdge = $this->getDoubleArea($outerEdge->vertexes, $coordinates) < 0
+//            ? new Edge(array_reverse($outerEdge->vertexes))
+//            : $outerEdge;
+        $outerVertexes = array_flip($outerEdge->vertexes);
 
         foreach ($edges as $pos => $edge) {
             $edges[$pos] = $this->getDoubleArea($edge->vertexes, $coordinates) < 0
@@ -158,7 +149,9 @@ final readonly class CoordinateService
 
         foreach ($edges as $edge) {
             foreach ($edge->vertexes as $vertex) {
-                $rooms[$vertex][] = $edge->vertexes;
+                if (!isset($outerVertexes[$vertex])) {
+                    $rooms[$vertex][] = $edge->vertexes;
+                }
             }
         }
 
@@ -168,11 +161,20 @@ final readonly class CoordinateService
             $flats[$vertex] = $this->mergeRooms($room, $vertex);
         }
 
-        foreach ($flats as $vertex => $flat) {
-            $visibleCoordinates = $this->getVisibleCoordinates($vertex, $flat, $coordinates);
-        }
+        $accuracy = 0.001;
 
+        do {
+            $found = false;
 
+            foreach ($flats as $vertex => $flat) {
+                $visibleCoordinates = $this->getVisibleCoordinates($vertex, $flat, $coordinates);
+                $oldCoordinate = $coordinates[$vertex];
+                $coordinates[$vertex] = $this->computeCentroid($visibleCoordinates);
+                $found = $found || $this->getDoubleDistance($oldCoordinate, $coordinates[$vertex]) >= $accuracy;
+            }
+        } while ($found);
+
+        return $coordinates;
     }
 
     /**
@@ -186,7 +188,7 @@ final readonly class CoordinateService
 
         foreach ($vertexes as $vertex) {
             $point = $coordinates[$vertex];
-            $result += ($point->x - $prevPoint->x) * ($point->y - $prevPoint->y);
+            $result += $this->getDoubleDistance($point, $prevPoint);
             $prevPoint = $point;
         }
 
@@ -232,860 +234,67 @@ final readonly class CoordinateService
      */
     private function getVisibleCoordinates(int $vertex, array $vertexes, array $coordinates): array
     {
-        $visorCoordinate = $coordinates[$vertex];
-        $lastRadarNumber = $prevRadar = null;
-        $visibleCounter = [];
-        $visible = true;
-        $zeroAngle = new Angle();
-        $piAngle = Angle::pi();
+        $visibleVertices = [];
+        $origin = $coordinates[$vertex];
 
-        foreach ($vertexes as $vertex) {
-            $currentCoordinate = $coordinates[$vertex];
-            $currentRadar = new Radar(
-                coordinate: $currentCoordinate,
-                angle: $this->getAngle($visorCoordinate, $currentCoordinate),
-                distance: $this->getDistance($visorCoordinate, $currentCoordinate),
-            );
+        foreach ($vertexes as $vertexB) {
+            $target = $coordinates[$vertexB];
 
-            if ($prevRadar === null) {
-                $currentRadar->setConnect(false);
-                $prevRadar = $currentRadar;
-
-                continue;
+            if ($this->isVisible($origin, $target, $coordinates, $vertexes)) {
+                $visibleVertices[] = $target;
             }
-
-            $shiftAngle = $currentRadar->angle->minus($prevRadar->angle)->modulo();
-
-            if ($shiftAngle->greaterThan($piAngle)) {
-                $shiftAngle = $piAngle->minus($shiftAngle);
-            }
-
-            //todo каждый раз, когда идем вперед, проверяем, загораживаем ли видимую часть, и если да, перестраиваем её
-            //todo каждый раз, когда идем назад, проверяем не пересекли ли мы видимую часть, и если да, обрезаем её
-
-            if ($shiftAngle->greaterThan($zeroAngle)) {
-                //тут может включиться видимость
-                [
-                    'visible' => $visible,
-                    'lastRadarNumber' => $lastRadarNumber,
-                    'replace' => $replace,
-                ] = $this->tryAddPoint(
-                    counter: $visibleCounter,
-                    lastConnectedNumber: $lastRadarNumber,
-                    visorCoordinate: $visorCoordinate,
-                    prevRadar: $prevRadar,
-                    currentRadar: $currentRadar,
-                );
-            } elseif ($visible) {
-                //тут может выключиться видимость
-                [
-                    'visible' => $visible,
-                    'lastRadarNumber' => $lastRadarNumber,
-                    'replace' => $replace,
-                ] = $this->tryRemovePoints(
-                    counter: $visibleCounter,
-                    lastRadarNumber: $lastRadarNumber,
-                    visorCoordinate: $visorCoordinate,
-                    prevRadar: $prevRadar,
-                    currentRadar: $currentRadar,
-                );
-                //todo если мы в невидимой части, то перемещаясь назад не можем оказаться в видимой
-            } else {
-                $replace = new ReplaceRadarCounter();
-            }
-
-
-            $prevRadar = $currentRadar;
-            array_splice($visibleCounter, $replace->offset, $replace->length, $replace->radars);
         }
 
-        return array_column($visibleCounter, 'coordinate');
+        return $visibleVertices;
     }
 
-    private function getAngle(Point2D $visorCoordinate, Point2D $vertexCoordinate): Angle
+    private function isVisible(Point2D $origin, Point2D $target, array $coordinates, array $vertexes): bool
     {
-        return new Angle(atan2(
-            $visorCoordinate->y - $vertexCoordinate->y,
-            $visorCoordinate->x - $vertexCoordinate->x,
-        ));
+        foreach ($vertexes as $i => $v1) {
+            $v2 = $vertexes[($i + 1) % count($vertexes)];
+
+            if ($this->segmentsIntersect($origin, $target, $coordinates[$v1], $coordinates[$v2])) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
-    private function getDistance(Point2D $visorCoordinate, Point2D $vertexCoordinate): float
+    private function segmentsIntersect(Point2D $a, Point2D $b, Point2D $c, Point2D $d): bool
     {
-        return ($visorCoordinate->y - $vertexCoordinate->y) * ($visorCoordinate->y - $vertexCoordinate->y)
-            + ($visorCoordinate->x - $vertexCoordinate->x) * ($visorCoordinate->x - $vertexCoordinate->x);
+        $d1 = $this->direction($c, $d, $a);
+        $d2 = $this->direction($c, $d, $b);
+        $d3 = $this->direction($a, $b, $c);
+        $d4 = $this->direction($a, $b, $d);
+
+        return $d1 * $d2 < 0 && $d3 * $d4 < 0;
     }
 
-    /**
-     * @param Radar[] $counter
-     *
-     * @return array{prevRadar: Radar, visible: bool, lastRadarNumber: int}
-     */
-    private function tryAddPoint(
-        array $counter,
-        ?int $lastConnectedNumber,
-        Point2D $visorCoordinate,
-        Radar $prevRadar,
-        Radar $currentRadar,
-    ): array {
-        //visor не часть многоугольника
-        $this->getCross(true, $counter, $prevRadar, $currentRadar);
-
-        $firstVisibleRadar = $counter[0] ?? null;
-
-        if ($firstVisibleRadar === null || $firstVisibleRadar->angle->greaterThanOrEqual($currentAngle)) {
-            return $this->newLineBeforeCounter($prevRadar, $currentCoordinate, $currentAngle, $currentDistance);
-        }
-
-        $count = count($counter);
-        $lastVisibleRadar = $counter[$count - 1];
-
-        if (
-            $firstVisibleRadar->angle->greaterThan($prevRadar->angle)
-            && $lastVisibleRadar->angle->greaterThanOrEqual($currentAngle)
-        ) {
-            return $this->newLineCrossLeftCounter(
-                $counter,
-                $visorCoordinate,
-                $prevRadar,
-                $currentCoordinate,
-                $currentAngle,
-                $currentDistance,
-            );
-        }
-
-        if (
-            $firstVisibleRadar->angle->greaterThan($prevRadar->angle)
-            && $currentAngle->isEqual($lastVisibleRadar->angle)
-        ) {
-            return $this->newLineIncludeAllCounter(
-                $counter,
-                $visorCoordinate,
-                $prevRadar,
-                $currentCoordinate,
-                $currentAngle,
-                $currentDistance,
-            );
-        }
-
-        if (
-            $firstVisibleRadar->angle->isEqual($prevRadar->angle)
-            && $lastVisibleRadar->angle->greaterThan($currentAngle)
-        ) {
-            return $this->newLineContainLeftCounter(
-                $counter,
-                $lastConnectedNumber,
-                $visorCoordinate,
-                $prevRadar,
-                $currentCoordinate,
-                $currentAngle,
-                $currentDistance,
-            );
-        }
-
-        if (
-            $firstVisibleRadar->angle->isEqual($prevRadar->angle)
-            && $lastVisibleRadar->angle->isEqual($currentAngle)
-        ) {
-            // ---
-            // ~~~
-            return $this->newLineEqualCounter(
-                $counter,
-                $lastConnectedNumber,
-                $visorCoordinate,
-                $prevRadar,
-                $currentCoordinate,
-                $currentAngle,
-                $currentDistance,
-            );
-        }
-
-        if (
-            $firstVisibleRadar->angle->isEqual($prevRadar->angle)
-            && $currentAngle->greaterThan($lastVisibleRadar->angle)
-        ) {
-            // ----
-            // ~~~
-            return $this->newLineIncludeRightCounter(
-                $counter,
-                $lastConnectedNumber,
-                $visorCoordinate,
-                $prevRadar,
-                $currentCoordinate,
-                $currentAngle,
-                $currentDistance,
-            );
-        }
-
-        if (
-            $prevRadar->angle->greaterThan($firstVisibleRadar->angle)
-            && $lastVisibleRadar->angle->greaterThan($currentAngle)
-        ) {
-            //  -
-            // ~~~
-            return $this->newLineInsideCounter(
-                $counter,
-                $lastConnectedNumber,
-                $visorCoordinate,
-                $prevRadar,
-                $currentCoordinate,
-                $currentAngle,
-                $currentDistance,
-            );
-        }
-
-        if (
-            $prevRadar->angle->greaterThan($firstVisibleRadar->angle)
-            && $lastVisibleRadar->angle->isEqual($currentAngle)
-        ) {
-            //   -
-            // ~~~
-            return $this->newLineContainRightCounter(
-                $counter,
-                $lastConnectedNumber,
-                $visorCoordinate,
-                $prevRadar,
-                $currentCoordinate,
-                $currentAngle,
-                $currentDistance,
-            );
-        }
-
-        if (
-            $prevRadar->angle->greaterThan($firstVisibleRadar->angle)
-            && $currentAngle->greaterThan($lastVisibleRadar->angle)
-        ) {
-            //   --
-            // ~~~
-            return $this->newLineCrossRightCounter(
-                $counter,
-                $lastConnectedNumber,
-                $visorCoordinate,
-                $prevRadar,
-                $currentCoordinate,
-                $currentAngle,
-                $currentDistance,
-            );
-        }
-
-        if ($prevRadar->angle->isEqual($lastVisibleRadar->angle)) {
-            // ~~~-
-            return $this->newLineConnectRightCounter(
-                $counter,
-                $lastConnectedNumber,
-                $visorCoordinate,
-                $prevRadar,
-                $currentCoordinate,
-                $currentAngle,
-                $currentDistance,
-            );
-        }
-
-        if ($prevRadar->angle->greaterThan($lastVisibleRadar->angle)) {
-            // ~~~ -
-            return $this->newLineAfterCounter(
-                $counter,
-                $lastConnectedNumber,
-                $visorCoordinate,
-                $prevRadar,
-                $currentCoordinate,
-                $currentAngle,
-                $currentDistance,
-            );
-        }
-
-        throw new LogicException('Unexpected case.');
-    }
-
-    /**
-     * @param Radar[] $counter
-     *
-     * @return array{prevRadar: Radar, visible: bool, lastRadarNumber: int}
-     */
-    private function tryRemovePoints(
-        array $counter,
-        ?int $lastRadarNumber,
-        Point2D $visorCoordinate,
-        Radar $prevRadar,
-        Radar $currentRadar,
-    ): array {
-
-
-
-        return [
-            'prevRadar' => $resultRadar,
-            'visible' => $visible,
-            'lastRadarNumber' => $resultRadarNumber,
-            'replace' => $replace,
-        ];
-    }
-
-    private function getCrossCoordinate(Line2D $lineA, Line2D $lineB, bool $real = false): ?Point2D
+    private function direction(Point2D $a, Point2D $b, Point2D $c): float
     {
-        // Координаты точек для первой линии
-        $x1 = $lineA->pointA->x;
-        $y1 = $lineA->pointA->y;
-        $x2 = $lineA->pointB->x;
-        $y2 = $lineA->pointB->y;
-
-        // Координаты точек для второй линии
-        $x3 = $lineB->pointA->x;
-        $y3 = $lineB->pointA->y;
-        $x4 = $lineB->pointB->x;
-        $y4 = $lineB->pointB->y;
-
-        $denominator = ($x1 - $x2) * ($y3 - $y4) - ($y1 - $y2) * ($x3 - $x4);
-
-        if ($denominator == 0) {
-            return null;
-        }
-
-        $result = new Point2D(
-            (($x1 * $y2 - $y1 * $x2) * ($x3 - $x4) - ($x1 - $x2) * ($x3 * $y4 - $y3 * $x4)) / $denominator,
-            (($x1 * $y2 - $y1 * $x2) * ($y3 - $y4) - ($y1 - $y2) * ($x3 * $y4 - $y3 * $x4)) / $denominator,
-        );
-
-        return !$real
-            || (min($x1, $x2) <= $result->x && max($x1, $x2) >= $result->x)
-            || (min($y1, $y2) <= $result->y && max($y1, $y2) >= $result->y)
-                ? $result
-                : null;
-    }
-
-
-    /**
-     * @return array{prevRadar: Radar, visible: bool, lastRadarNumber: int}
-     *
-     * [- ~~~ | -~~~]
-     */
-    private function newLineBeforeCounter(
-        Radar $prevRadar,
-        Point2D $currentCoordinate,
-        Angle $currentAngle,
-        float $currentDistance,
-    ): array {
-        $newRadar = new Radar(
-            coordinate: $currentCoordinate,
-            angle: $currentAngle,
-            distance: $currentDistance,
-            connect: true,
-        );
-
-        return [
-            'newRadar' => $newRadar,
-            'visible' => true,
-            'lastRadarNumber' => 1,
-            'replace' => new ReplaceRadarCounter(0, 0, [$prevRadar, $newRadar]),
-        ];
+        return ($b->x - $a->x) * ($c->y - $a->y) - ($b->y - $a->y) * ($c->x - $a->x);
     }
 
     /**
-     * @param Radar[] $counter
-     *
-     * @return array{prevRadar: Radar, visible: bool, lastRadarNumber: int}
-     *
-     * [ --   | ---- ]
-     * [  ~~~ |  ~~~ ]
+     * @param Point2D[] $polygon
      */
-    private function newLineCrossLeftCounter(
-        array $counter,
-        Point2D $visorCoordinate,
-        Radar $prevRadar,
-        Point2D $currentCoordinate,
-        Angle $currentAngle,
-        float $currentDistance,
-    ): array {
-
-        $cross = $this->getCross($counter, $prevRadar, $currentCoordinate, $currentAngle, $visorCoordinate);
-
-        $crossCoordinate = $this->getCrossCoordinate(
-            new Line2D($visorCoordinate, $counter[0]->coordinate),
-            new Line2D($prevRadar->coordinate, $currentCoordinate),
-        );
-        /** Расстояние до отрезка через первую координату контура */
-        $crossDistance = $this->getDistance($visorCoordinate, $crossCoordinate);
-
-        if ($crossDistance > $counter[0]->distance) {
-            $crossRadar = new Radar(
-                coordinate: $crossCoordinate,
-                angle: $counter[0]->angle,
-                distance: $crossDistance,
-                connect: true,
-            );
-            $newRadar = new Radar(
-                coordinate: $currentCoordinate,
-                angle: $currentAngle,
-                distance: $currentDistance,
-                connect: false,
-            );
-
-            return [
-                'newRadar' => $newRadar,
-                'visible' => false,
-                'lastRadarNumber' => null,
-                'replace' => new ReplaceRadarCounter(0, 0, [$prevRadar, $crossRadar]),
-            ];
-        }
-
-        //пересечение контура возможно (контур ведем прямо, в какой то-момент уходим чуть назад, создавая Z образный выступ, в который может провалиться часть отрезка)
-        //todo нужен объект пересечения - данные о том, между какими двумя точками контура пересечение и в какой координате
-
-        $cross = $this->getCross($counter, $prevRadar, $currentCoordinate, $currentAngle, $visorCoordinate);
-
-        if ($cross->crossCounterNumber !== null) {
-            //Имеется пересечение контура - часть нового отрезка скрыто за бесконтактной частью контура
-            $crossCoordinate = $this->getCrossCoordinate(
-                new Line2D($visorCoordinate, $counter[$cross->crossCounterNumber]->coordinate),
-                new Line2D($prevRadar->coordinate, $currentCoordinate),
-                true,
-            );
-
-            if ($crossCoordinate === null) {
-                $newRadar = new Radar(
-                    coordinate: $currentCoordinate,
-                    angle: $currentAngle,
-                    distance: $currentDistance,
-                    connect: true,
-                );
-
-                return [
-                    'newRadar' => $newRadar,
-                    'visible' => false,
-                    'lastRadarNumber' => null,
-                    'replace' => new ReplaceRadarCounter(0, $cross->crossCounterNumber, [$prevRadar, $newRadar]),
-                ];
-            }
-
-            $crossRadar = new Radar(
-                coordinate: $crossCoordinate,
-                angle: $this->getAngle($visorCoordinate, $crossCoordinate),
-                distance: $this->getDistance($visorCoordinate, $crossCoordinate),
-                connect: true,
-            );
-            $newRadar = new Radar(
-                coordinate: $currentCoordinate,
-                angle: $currentAngle,
-                distance: $currentDistance,
-                connect: false,
-            );
-
-            return [
-                'newRadar' => $newRadar,
-                'visible' => false,
-                'lastRadarNumber' => null,
-                'replace' => new ReplaceRadarCounter(0, $cross->crossCounterNumber, [$prevRadar, $crossRadar]),
-            ];
-        }
-
-        if ($cross->lastCounterNumber === null) {
-            throw new LogicException('Отрезок в этом методе не должен быть длинее видимого контура.');
-        }
-
-        $newRadar = new Radar(
-            coordinate: $currentCoordinate,
-            angle: $currentAngle,
-            distance: $currentDistance,
-            connect: true,
-        );
-
-        return [
-            'newRadar' => $newRadar,
-            'visible' => false,
-            'lastRadarNumber' => null,
-            'replace' => new ReplaceRadarCounter(0, $cross->lastCounterNumber, [$prevRadar, $newRadar]),
-        ];
-    }
-
-    /**
-     * @param Radar[] $counter
-     *
-     * @return array{prevRadar: Radar, visible: bool, lastRadarNumber: int}
-     *
-     * [ ----- ] -
-     * [  ~~~  ]
-     */
-    private function newLineIncludeAllCounter(
-        array $counter,
-        Point2D $visorCoordinate,
-        Radar $prevRadar,
-        Point2D $currentCoordinate,
-        Angle $currentAngle,
-        float $currentDistance,
-    ): array {
-        $crossCoordinate = $this->getCrossCoordinate(
-            new Line2D($visorCoordinate, $counter[0]->coordinate),
-            new Line2D($prevRadar->coordinate, $currentCoordinate),
-        );
-        $crossDistance = $this->getDistance($visorCoordinate, $crossCoordinate);
-        $count = count($counter);
-
-        if ($crossDistance < $counter[0]->distance) {
-            $newRadar = new Radar(
-                coordinate: $currentCoordinate,
-                angle: $currentAngle,
-                distance: $currentDistance,
-                connect: true,
-            );
-
-            return [
-                'newRadar' => $newRadar,
-                'visible' => true,
-                'lastRadarNumber' => 1,
-                'replace' => new ReplaceRadarCounter(0, $count, [$prevRadar, $newRadar]),
-            ];
-        }
-
-        $newRadar = new Radar(
-            coordinate: $currentCoordinate,
-            angle: $currentAngle,
-            distance: $currentDistance,
-            connect: true,
-        );
-        $rightCrossCoordinate = $this->getCrossCoordinate(
-            new Line2D($visorCoordinate, $counter[$count - 1]->coordinate),
-            new Line2D($prevRadar->coordinate, $currentCoordinate),
-        );
-
-        return [
-            'newRadar' => $newRadar,
-            'visible' => true,
-            'lastRadarNumber' => $count + 3,
-            'replace' => new ReplaceRadarCounter(0, count($counter), [
-                $prevRadar,
-                new Radar(
-                    coordinate: $crossCoordinate,
-                    angle: $counter[0]->angle,
-                    distance: $crossDistance,
-                    connect: true,
-                ),
-                ...$counter,
-                new Radar(
-                    coordinate: $rightCrossCoordinate,
-                    angle: $counter[$count - 1]->angle,
-                    distance: $this->getDistance($visorCoordinate, $rightCrossCoordinate),
-                    connect: true,
-                ),
-                $newRadar,
-            ]),
-        ];
-    }
-
-    /**
-     * @param Radar[] $counter
-     *
-     * @return array{prevRadar: Radar, visible: bool, lastRadarNumber: int}
-     *
-     * [ -   ]
-     * [ ~~~ ]
-     */
-    private function newLineContainLeftCounter(
-        array $counter,
-        ?int $lastConnectedNumber,
-        Point2D $visorCoordinate,
-        Radar $prevRadar,
-        Point2D $currentCoordinate,
-        Angle $currentAngle,
-        float $currentDistance,
-    ): array {
-        //если $lastConnectedNumber !== null, отрезок может пересекать контур
-        $cross = $lastConnectedNumber === null ? null : $this->getCross()
-
-        if ($prevRadar->distance > $counter[0]->distance) {
-            return [
-                'newRadar' => new Radar(
-                    coordinate: $currentCoordinate,
-                    angle: $currentAngle,
-                    distance: $currentDistance,
-                    connect: false,
-                ),
-                'visible' => false,
-                'lastRadarNumber' => null,
-                'replace' => new ReplaceRadarCounter(),
-            ];
-        }
-
-        $prevCounterRadar = null;
-
-        foreach ($counter as $number => $radar) {
-            if ($prevCounterRadar === null) {
-                $prevCounterRadar = $radar;
-
-                continue;
-            }
-
-            if ($radar->angle->isEqual($currentAngle)) {
-                if ($currentDistance > $radar->distance) {
-                    throw new LogicException('Отрезок, начинающийся до контура не может пересекать контур.');
-                }
-
-                $newRadar = new Radar(
-                    coordinate: $currentCoordinate,
-                    angle: $currentAngle,
-                    distance: $currentDistance,
-                    connect: true,
-                );
-
-                return [
-                    'newRadar' => $newRadar,
-                    'visible' => true,
-                    'lastRadarNumber' => 1,
-                    'replace' => new ReplaceRadarCounter(0, $number + 1, [$prevRadar, $newRadar]),
-                ];
-            }
-
-            if ($radar->angle->greaterThan($currentAngle)) {
-                $crossCoordinate = $this->getCrossCoordinate(
-                    new Line2D($visorCoordinate, $currentCoordinate),
-                    new Line2D($prevCounterRadar->coordinate, $radar->coordinate),
-                );
-                $crossDistance = $this->getDistance($visorCoordinate, $crossCoordinate);
-
-                if ($currentDistance > $crossDistance) {
-                    throw new LogicException('Отрезок, начинающийся до контура не может пересекать контур.');
-                }
-
-                $crossRadar = new Radar(
-                    coordinate: $crossCoordinate,
-                    angle: $currentAngle,
-                    distance: $crossDistance,
-                    connect: true,
-                );
-                $newRadar = new Radar(
-                    coordinate: $currentCoordinate,
-                    angle: $currentAngle,
-                    distance: $currentDistance,
-                    connect: false,
-                );
-
-                return [
-                    'newRadar' => $newRadar,
-                    'visible' => true,
-                    'lastRadarNumber' => 1,
-                    'replace' => new ReplaceRadarCounter(0, $number + 1, [$prevRadar, $newRadar, $crossRadar]),
-                ];
-            }
-
-            $prevCounterRadar = $radar;
-        }
-
-    }
-
-    /**
-     * @param Radar[] $counter
-     */
-    private function getCross(
-        bool $asc,
-        array $counter,//полигон
-        Radar $prevRadar,
-        Radar $currentRadar,
-    ): Cross {
-        if ($counter === []) {
-            return new Cross(first: new CrossPoint(number: 0, current: true, isEqual: false));
-        }
-
-        $firstCounter = $counter[0];
-        $count = count($counter);
-        $lastCounter = $counter[$count - 1];
-        $intersect = $asc
-            ? $this->getAnglesIntersect($prevRadar->angle, $currentRadar->angle, $firstCounter->angle, $lastCounter->angle)
-            : $this->getAnglesIntersect($currentRadar->angle, $prevRadar->angle, $firstCounter->angle, $lastCounter->angle);
-
-
-
-
-        if ($asc && $prevRadar->angle > $currentRadar->angle) {
-            //идем по часовой стрелке, при этом предыдущая точка лежит впереди - значит пересекли нулевой угол
-            if ($firstRadar->angle > $lastRadar->angle) {
-                //контур пересек нулевой угол
-
-                return;
-            }
-
-
-
-            return;
-        }
-
-        if (!$asc && $prevRadar->angle < $currentRadar->angle) {
-            //идем против часовой стрелке, при этом предыдущая точка лежит позади - значит пересекли нулевой угол
-
-            return;
-        }
-
-        $firstRadar = $counter[0];
-        $lastRadar = $counter[count($counter) - 1];
-
-        if ($firstRadar->angle > $lastRadar->angle) {
-            //контур пересек нулевой угол
-
-            return;
-        }
-
-        if ($asc) {
-            if ($firstRadar->angle->greaterThan($currentRadar->angle)) {
-                return new Cross(first: new CrossPoint(number: 0, current: true, isEqual: false));
-            }
-
-            if ($firstRadar->angle->isEqual($currentRadar->angle)) {
-                return new Cross(first: new CrossPoint(number: 0, current: true, isEqual: true));
-            }
-
-            if ($prevRadar->angle->greaterThan($lastRadar->angle)) {
-                return new Cross(first: new CrossPoint(number: 0, current: true, isEqual: false));
-            }
-
-            if ($prevRadar->angle->isEqual($lastRadar->angle)) {
-                return new Cross(
-                    first: new CrossPoint(number: 0, current: true, isEqual: false),
-                    last: new CrossPoint(number: 0, current: false, isEqual: true),
-                );
-            }
-        }
-
-
-
-        //$counter[0]->angle->between()
-
-        if (
-            $prevRadar->angle->greaterThan($lastRadar->angle)
-        ) {
-            return new Cross(first: new CrossPoint(number: 0, current: true, isEqual: false));
-        }
-
-        if ($counter[0]->angle->isEqual($currentRadar->angle)) {
-            return new Cross(last: new CrossPoint(number: 0, current: true, isEqual: true));
-        }
-
-
-
-
-
-        //пересечение контура может быть только в точках разрыва.
-        $prevCounterRadar = null;
-        $firstPoint = null;
-        $firstIsEqual = false;
-        $lastCounterNumber = null;
-        $lastIsEqual = false;
-        $crossCoordinate = null;
-        $crossCounterNumber = null;
-        $crossIsEqual = false;
-
-        foreach ($counter as $number => $radar) {
-            if ($radar->angle->greaterThan($prevRadar->angle)) {
-                $prevCounterRadar = $radar;
-
-                continue;
-            }
-
-            if ($firstPoint === null) {
-                $firstPoint = new CrossPoint(
-                    number: $number,
-                    current:
-                );
-            }
-
-            $firstPoint ??= $number;
-
-            if ($radar->angle->greaterThanOrEqual($currentAngle)) {
-                $lastCounterNumber = $number;
-            }
-
-            if ($radar->connect) {
-                $prevCounterRadar = $radar;
-
-                if ($lastCounterNumber !== null) {
-                    break;
-                }
-
-                continue;
-            }
-
-            if ($crossCoordinate === null) {
-                $crossCoordinate = $this->getCrossCoordinate(
-                    new Line2D($radar->coordinate, $prevCounterRadar->coordinate),
-                    new Line2D($currentCoordinate, $prevRadar->coordinate),
-                    true,
-                );
-
-                if ($crossCoordinate !== null) {
-                    $crossCounterNumber = $number;
-                }
-            }
-
-            if ($lastCounterNumber !== null) {
-                break;
-            }
-
-            $prevCounterRadar = $radar;
-        }
-
-        return new Cross(
-            firstCounterNumber: $firstPoint,
-            lastCounterNumber: $lastCounterNumber,
-            crossCounterNumber: $crossCounterNumber,
-        );
-    }
-
-    private function getAnglesIntersect(Angle $angle1L, Angle $angle1R, Angle $angle2L, Angle $angle2R): IntersectType
+    private function computeCentroid(array $polygon): Point2D
     {
-        $angle1LRelation = $this->getAngleRelation($angle1L, $angle2L, $angle2R);
-        $angle1RRelation = $this->getAngleRelation($angle1R, $angle2L, $angle2R);
+        $xSum = 0;
+        $ySum = 0;
+        $n = count($polygon);
 
-
-
-        //Both
-        if ($angle2R->greaterThan($angle2L)) {
-            $invert = Angle::pi()->greaterThan($angle2R->minus($angle2R));
-        } else {
-
+        foreach ($polygon as $point) {
+            $xSum += $point->x;
+            $ySum += $point->y;
         }
 
-
-
-        return match ($angle1LRelation) {
-            AngleIntersectType::EqualLeft => match ($angle1RRelation) {
-                AngleIntersectType::EqualRight => IntersectType::Equals,
-                AngleIntersectType::Between => IntersectType::Contain,
-                AngleIntersectType::Outside => IntersectType::Absorption,
-                default => throw new LogicException(),
-            },
-            AngleIntersectType::Between => match ($angle1RRelation) {
-                AngleIntersectType::EqualRight,
-                AngleIntersectType::Between =>  ? IntersectType::Contain : IntersectType::BothIntersect,
-                AngleIntersectType::EqualLeft,
-                AngleIntersectType::Outside => IntersectType::LeftIntersect,
-            },
-            AngleIntersectType::Outside, AngleIntersectType::EqualRight => match ($angle1RRelation) {
-                AngleIntersectType::EqualRight => IntersectType::Absorption,
-                AngleIntersectType::Between => IntersectType::RightIntersect,
-                AngleIntersectType::EqualLeft,
-                AngleIntersectType::Outside => IntersectType::NotIntersect,
-            },
-        };
+        return new Point2D($xSum / $n, $ySum / $n);
     }
 
-    private function shift(mixed $case, int $pos): array
+    private function getDoubleDistance(Point2D $a, Point2D $b): float
     {
-        return array_push($case, ...array_splice($case, 0, $pos));
-    }
-
-    private function getAngleRelation(Angle $angle, Angle $angleA, Angle $angleB): AngleIntersectType
-    {
-        if ($angle->isEqual($angleA)) {
-            return AngleIntersectType::EqualLeft;
-        }
-
-        if ($angle->isEqual($angleB)) {
-            return AngleIntersectType::EqualRight;
-        }
-
-        if (
-            $angle->greaterThan($angleA) && $angleB->greaterThan($angle)
-            || ($angleA->greaterThan($angleB) && ($angleA->greaterThan($angle) || $angle->greaterThan($angleB)))
-        ) {
-            return AngleIntersectType::Between;
-        }
-
-        return AngleIntersectType::Outside;
+        return ($a->x - $b->x) * ($a->y - $b->y);
     }
 }
