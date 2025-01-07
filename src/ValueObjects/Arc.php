@@ -20,8 +20,9 @@ final readonly class Arc
 
     public function lastVertex(): int
     {
+        $vertexes = $this->vertexes;
         /** @var int[] $lastVertexes */
-        $lastVertexes = end($this->vertexes);
+        $lastVertexes = end($vertexes);
         /** @var int $lastVertex */
         $lastVertex = end($lastVertexes);
 

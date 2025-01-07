@@ -23,7 +23,7 @@ final class PlanarServiceTest extends AbstractTestCase
      */
     public function testConnectionsToSwg(array $connections, array $expected): void
     {
-        $actual = $this->getPlanarService()->connectionsToSwg($connections, new SliceAggregate(new ZeroSlice()));
+        $actual = $this->getPlanarService()->connectionsToSvg($connections, new SliceAggregate(new ZeroSlice()));
 
         $this->assertEquals($expected, $actual);
     }

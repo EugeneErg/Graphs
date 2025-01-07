@@ -27,11 +27,12 @@ final readonly class CoordinateService
             $indexes = $this->getIndexes($arc);
             $begin = $result[$arc->firstVertex()];
             $end = $result[$arc->lastVertex()];
+
             $center = $this->getGravityCenter($arc->gravity, $result);
 
             foreach ($indexes as $vertex => $index) {
-                if (!isset($coordinates[$vertex])) {
-                    $coordinates[$vertex] = $this->bezierPoint($begin, $center, $end, $index);
+                if (!isset($result[$vertex])) {
+                    $result[$vertex] = $this->bezierPoint($begin, $center, $end, $index);
                 }
             }
         }
@@ -150,7 +151,7 @@ final readonly class CoordinateService
         foreach ($edges as $edge) {
             foreach ($edge->vertexes as $vertex) {
                 if (!isset($outerVertexes[$vertex])) {
-                    $rooms[$vertex][] = $edge->vertexes;
+                    $rooms[$vertex][] = $edge;
                 }
             }
         }
@@ -162,6 +163,7 @@ final readonly class CoordinateService
         }
 
         $accuracy = 0.001;
+        $step = 0;
 
         do {
             $found = false;
@@ -170,6 +172,14 @@ final readonly class CoordinateService
                 $visibleCoordinates = $this->getVisibleCoordinates($vertex, $flat, $coordinates);
                 $oldCoordinate = $coordinates[$vertex];
                 $coordinates[$vertex] = $this->computeCentroid($visibleCoordinates);
+
+                if ($step === 3) {
+                    var_dump($coordinates[$vertex], $flat, $visibleCoordinates, $coordinates);die;
+
+                    return $coordinates;
+                }
+
+                $step++;
                 $found = $found || $this->getDoubleDistance($oldCoordinate, $coordinates[$vertex]) >= $accuracy;
             }
         } while ($found);
@@ -188,7 +198,7 @@ final readonly class CoordinateService
 
         foreach ($vertexes as $vertex) {
             $point = $coordinates[$vertex];
-            $result += $this->getDoubleDistance($point, $prevPoint);
+            $result += ($point->x - $prevPoint->x) * ($point->y + $prevPoint->y);
             $prevPoint = $point;
         }
 
@@ -207,10 +217,10 @@ final readonly class CoordinateService
         foreach ($edges as $num => $edge) {
             /** @var int $posA */
             $posA = array_search($vertex, $edge->vertexes);
-            $prevVertex = $edge->getNormalVertexNumber($posA - 1);
-            $nextVertex = $edge->getNormalVertexNumber($posA + 1);
-            $lines[$prevVertex] = $num;
-            $positions[$num] = [$posA, $nextVertex];
+            $nextVertex = $edge->getNormalVertexNumber($posA - 1);
+            $prevVertex = $edge->getNormalVertexNumber($posA + 1);
+            $lines[$edge->vertexes[$prevVertex]] = $num;
+            $positions[$num] = ['pos' => $posA, 'vertex' => $edge->vertexes[$nextVertex]];
         }
 
         $result = [];
@@ -218,9 +228,9 @@ final readonly class CoordinateService
         $currentPos = 0;
 
         for ($i = 0; $i < $edgeCount; $i++) {
-            [$pos, $nextVertex] = $positions[$currentPos];
+            ['pos' => $pos, 'vertex' => $nextVertex] = $positions[$currentPos];
             $edge = $edges[$currentPos];
-            $result[] = $edge->getVertexes($pos + 1, count($edge->vertexes) - 1);
+            $result[] = $edge->getVertexes($pos + 1, count($edge->vertexes) - 2);
             $currentPos = $lines[$nextVertex];
         }
 
@@ -229,10 +239,11 @@ final readonly class CoordinateService
 
     /**
      * @param int[] $vertexes
+     * @param int[] $connectedVertexes
      * @param Point2D[] $coordinates
      * @return Point2D[]
      */
-    private function getVisibleCoordinates(int $vertex, array $vertexes, array $coordinates): array
+    private function getVisibleCoordinates(array $vertexes, array $connectedVertexes, array $coordinates): array
     {
         $visibleVertices = [];
         $origin = $coordinates[$vertex];

@@ -8,6 +8,7 @@ use EugeneErg\Graphs\Exceptions\InvalidConnectionException;
 use EugeneErg\Graphs\Exceptions\InvalidVertexValueException;
 use EugeneErg\Graphs\Services\ArcService;
 use EugeneErg\Graphs\Services\CanvasService;
+use EugeneErg\Graphs\Services\CoordinateService;
 use EugeneErg\Graphs\Services\EdgeService;
 use EugeneErg\Graphs\Services\GraphService;
 use EugeneErg\Graphs\Services\IntersectionService;
@@ -77,6 +78,7 @@ abstract class AbstractTestCase extends TestCase
         ?EdgeService $edgeService = null,
         ?IntersectionService $intersectionService = null,
         ?ArcService $arcService = null,
+        ?CoordinateService $coordinateService = null,
     ): PlanarService {
         $canvasService ??= $this->getCanvasService();
         $graphService ??= $this->getGraphService($canvasService);
@@ -90,6 +92,7 @@ abstract class AbstractTestCase extends TestCase
             $edgeService,
             $this->getVertexService($canvasService, $graphService, $edgeService, $intersectionService),
             $arcService ?? $this->getArcService(),
+            $coordinateService ?? new CoordinateService(),
         );
     }
 

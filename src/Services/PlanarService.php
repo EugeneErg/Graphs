@@ -37,7 +37,7 @@ readonly class PlanarService
      * @throws InvalidVertexValueException
      * @throws Exception
      */
-    public function connectionsToSwg(array $connections, SliceAggregate $sliceAggregate): array
+    public function connectionsToSvg(array $connections, SliceAggregate $sliceAggregate): array
     {
         $graph = $this->graphService->createFromConnections($connections);
 
@@ -45,6 +45,7 @@ readonly class PlanarService
         // так как потом нужно искать расстояние между ними
 
         $disconnectedGraphs = $this->graphService->splitGraphOnDisconnected($graph);
+
         $trees = [];
 
         foreach ($disconnectedGraphs as $graph) {
@@ -54,14 +55,21 @@ readonly class PlanarService
         $coordinates = [];
 
         foreach ($trees as $treePos => $tree) {
-            $edges = $this->treeToSwg($tree, $sliceAggregate);
+            $edges = $this->treeToSvg($tree, $sliceAggregate);
             $outerKey = $sliceAggregate->getKey($edges);
             $outerEdge = $edges[$outerKey];
             unset($edges[$outerKey]);
 
             $arcs = $this->arcService->createArcs($edges, $outerEdge);
+
             $treeCoordinate = $this->coordinateService->getCoordinates(new Topology($outerEdge, $arcs), 100);
+
             $coordinates[$treePos] = $this->coordinateService->relaxCoordinates($outerEdge, $edges, $treeCoordinate);
+
+            file_put_contents(
+                'test ' . $treePos . '.svg',
+                $this->getSvgContent($coordinates[$treePos], $connections, 100),
+            );
         }
 
         return $coordinates;
@@ -91,7 +99,7 @@ readonly class PlanarService
      *
      * @throws Exception
      */
-    private function treeToSwg(Tree $tree, SliceAggregate $sliceAggregate): array
+    private function treeToSvg(Tree $tree, SliceAggregate $sliceAggregate): array
     {
         /** @var Edge[][] $edgesCube */
         $edgesCube = [];
@@ -103,5 +111,18 @@ readonly class PlanarService
         }
 
         return $this->vertexService->mergeTree($edgesCube, $tree->connections, $sliceAggregate);
+    }
+
+    /**
+     * @param Point2D[] $coordinates
+     * @param true[][] $connections
+     */
+    private function getSvgContent(array $coordinates, array $connections, int $graphRadius): string
+    {
+        ob_start();
+
+        require __DIR__ . '/../Views/graph-svg.php';
+
+        return ob_get_clean();
     }
 }
