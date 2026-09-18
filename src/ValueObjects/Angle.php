@@ -71,7 +71,7 @@ class Angle implements \JsonSerializable
 
     public function modulo(): Angle
     {
-        $result = $this->value - M_PI * 2 * intdiv($this->value, M_PI * 2);
+        $result = fmod($this->value, M_PI * 2);
 
         return new Angle($result + ($result < 0 ? (M_PI * 2) : 0));
     }

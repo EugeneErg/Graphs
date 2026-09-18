@@ -11,14 +11,14 @@ use EugeneErg\Graphs\ValueObjects\Edge;
 use EugeneErg\Graphs\ValueObjects\TreeEdge;
 use EugeneErg\Graphs\ValueObjects\ZeroSlice;
 use Exception;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 final class EdgeServiceTest extends AbstractTestCase
 {
     /**
-     * @dataProvider getGetPartEdgeData
-     *
      * @param int[] $expected
      */
+    #[DataProvider('getGetPartEdgeData')]
     public function testGetPartEdge(int $offset, bool $count, array $expected): void
     {
         $actual = $this->getEdgeService()->getPartEdge(new Edge([1, 2, 3, 4, 5]), $offset, $count ? 3 : -3);
@@ -27,12 +27,11 @@ final class EdgeServiceTest extends AbstractTestCase
     }
 
     /**
-     * @dataProvider getSplitOnTreeEdgesData
-     *
      * @throws InvalidConnectionException
      * @throws InvalidVertexValueException
      * @throws Exception
      */
+    #[DataProvider('getSplitOnTreeEdgesData')]
     public function testSplitOnTreeEdges(array $branch, TreeEdge $expected): void
     {
         $graph = $this->getGraphService()->graphToDirection($this->getGraphService()->createFromConnections($branch));
@@ -43,11 +42,10 @@ final class EdgeServiceTest extends AbstractTestCase
     }
 
     /**
-     * @dataProvider getFindShortEdgeData
-     *
      * @throws InvalidConnectionException
      * @throws InvalidVertexValueException
      */
+    #[DataProvider('getFindShortEdgeData')]
     public function testFindShortEdge(array $branch, int $vertexA, int $vertexB, array $expected): void
     {
         $graph = $this->getGraphService()->graphToDirection($this->getGraphService()->createFromConnections($branch));
@@ -59,11 +57,10 @@ final class EdgeServiceTest extends AbstractTestCase
     }
 
     /**
-     * @dataProvider getFindShortPathData
-     *
      * @throws InvalidConnectionException
      * @throws InvalidVertexValueException
      */
+    #[DataProvider('getFindShortPathData')]
     public function testFindShortPath(array $branch, int $vertexA, int $vertexB, array $expected): void
     {
         $graph = $this->getGraphService()->graphToDirection($this->getGraphService()->createFromConnections($branch));
@@ -74,11 +71,10 @@ final class EdgeServiceTest extends AbstractTestCase
     }
 
     /**
-     * @dataProvider getGetInnerVertexesData
-     *
      * @throws InvalidConnectionException
      * @throws InvalidVertexValueException
      */
+    #[DataProvider('getGetInnerVertexesData')]
     public function testGetInnerVertexes(array $branch, array $path, array $outerVertexes, array $expected): void
     {
         $graph = $this->getGraphService()->graphToDirection($this->getGraphService()->createFromConnections($branch));
@@ -95,9 +91,7 @@ final class EdgeServiceTest extends AbstractTestCase
         self::assertEquals($expected, $actual);
     }
 
-    /**
-     * @dataProvider getPathToConnectionsData
-     */
+    #[DataProvider('getPathToConnectionsData')]
     public function testPathToConnections(array $path, array $expected): void
     {
         $actual = $this->runPrivateMethod([$this->getEdgeService(), 'pathToConnections'], $path);
@@ -106,11 +100,10 @@ final class EdgeServiceTest extends AbstractTestCase
     }
 
     /**
-     * @dataProvider getPathToOuterConnectionData
-     *
      * @throws InvalidConnectionException
      * @throws InvalidVertexValueException
      */
+    #[DataProvider('getPathToOuterConnectionData')]
     public function testPathToOuterConnection(array $path, array $branch, array $expected): void
     {
         $graph = $this->getGraphService()->graphToDirection($this->getGraphService()->createFromConnections($branch));
@@ -121,11 +114,10 @@ final class EdgeServiceTest extends AbstractTestCase
     }
 
     /**
-     * @dataProvider getDisconnectVertexesData
-     *
      * @throws InvalidConnectionException
      * @throws InvalidVertexValueException
      */
+    #[DataProvider('getDisconnectVertexesData')]
     public function testDisconnectVertexes(array $vertexes, array $branch, array $expected): void
     {
         $graph = $this->getGraphService()->graphToDirection($this->getGraphService()->createFromConnections($branch));

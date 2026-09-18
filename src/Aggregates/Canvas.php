@@ -20,6 +20,14 @@ final class Canvas
         return $this->pixels[$vertex] ?? 0;
     }
 
+    /**
+     * @return array<int, int> вершина => цвет
+     */
+    public function getPixels(): array
+    {
+        return $this->pixels;
+    }
+
     public function setPixel(int $vertex, int $color): void
     {
         $this->pixels[$vertex] = $color;

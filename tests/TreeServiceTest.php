@@ -9,14 +9,15 @@ use EugeneErg\Graphs\Exceptions\InvalidConnectionException;
 use EugeneErg\Graphs\Exceptions\InvalidVertexValueException;
 use EugeneErg\Graphs\ValueObjects\DirectionGraph;
 use EugeneErg\Graphs\ValueObjects\GraphInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 final class TreeServiceTest extends AbstractTestCase
 {
     /**
-     * @dataProvider getFromConnectionGraphSuccessData
      * @throws InvalidConnectionException
      * @throws InvalidVertexValueException
      */
+    #[DataProvider('getFromConnectionGraphSuccessData')]
     public function testFromConnectionGraphSuccess(
         array $connections,
         array $expectedBranches,

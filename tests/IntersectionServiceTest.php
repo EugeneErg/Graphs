@@ -9,16 +9,16 @@ use EugeneErg\Graphs\Exceptions\InvalidConnectionException;
 use EugeneErg\Graphs\Exceptions\InvalidVertexValueException;
 use EugeneErg\Graphs\ValueObjects\Intersection;
 use EugeneErg\Graphs\ValueObjects\ZeroSlice;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 final class IntersectionServiceTest extends AbstractTestCase
 {
     /**
-     * @dataProvider getGetInnerIntersectionsData
-     *
      * @throws InvalidConnectionException
      * @throws InvalidVertexValueException
      * @throws \Exception
      */
+    #[DataProvider('getGetInnerIntersectionsData')]
     public function testGetInnerIntersections(array $branch, array $path, array $outerVertexes, array $expected): void
     {
         $graph = $this->getGraphService()->graphToDirection($this->getGraphService()->createFromConnections($branch));
@@ -28,9 +28,7 @@ final class IntersectionServiceTest extends AbstractTestCase
         self::assertEquals($expected, $actual);
     }
 
-    /**
-     * @dataProvider getGetIntersectionMatrixData
-     */
+    #[DataProvider('getGetIntersectionMatrixData')]
     public function testGetIntersectionMatrix(array $path, array $intersections, array $expected): void
     {
         $actual = $this->runPrivateMethod([$this->getIntersectService(), 'getIntersectionMatrix'], $path, $intersections);
@@ -39,11 +37,10 @@ final class IntersectionServiceTest extends AbstractTestCase
     }
 
     /**
-     * @dataProvider getGetIntersectionsData
-     *
      * @throws InvalidConnectionException
      * @throws InvalidVertexValueException
      */
+    #[DataProvider('getGetIntersectionsData')]
     public function testGetIntersections(array $branch, array $path, array $outerVertexes, array $expected): void
     {
         $graph = $this->arrayToDirectionGraph($branch);
@@ -56,9 +53,7 @@ final class IntersectionServiceTest extends AbstractTestCase
         );
     }
 
-    /**
-     * @dataProvider getIsConflictedData
-     */
+    #[DataProvider('getIsConflictedData')]
     public function testIsConflicted(array $path, array $connectionsA, array $connectionsB, bool $expected): void
     {
         $actual = $this->runPrivateMethod([$this->getIntersectService(), 'isConflicted'], $connectionsA, $connectionsB, $path);
@@ -101,10 +96,12 @@ final class IntersectionServiceTest extends AbstractTestCase
                         isOuter: null,
                     ),
                 ],
+                // Ключ строки — вершина, значение — её строка матрицы;
+                // первая строка с ключом-пробелом это шапка со списком вершин.
                 [
-                    ' |0|1', //todo why
-                    '0| |1',
-                    '1|1| ',
+                    ' ' => '0|1',
+                    0 => ' |1',
+                    1 => '1| ',
                 ],
             ],
         ];

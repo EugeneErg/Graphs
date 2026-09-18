@@ -6,7 +6,9 @@ namespace EugeneErg\Graphs\Services;
 
 use EugeneErg\Graphs\Aggregates\ArticulationVertexesAggregate;
 use EugeneErg\Graphs\Aggregates\Canvas;
+use EugeneErg\Graphs\Aggregates\Trace;
 use EugeneErg\Graphs\ValueObjects\DirectionGraph;
+use EugeneErg\Graphs\ValueObjects\StageKind;
 use EugeneErg\Graphs\ValueObjects\Tree;
 
 readonly class TreeService
@@ -17,11 +19,13 @@ readonly class TreeService
     ) {
     }
 
-    public function fromConnectionGraph(ArticulationVertexesAggregate $articulationVertexesAggregate): Tree
+    public function fromConnectionGraph(ArticulationVertexesAggregate $articulationVertexesAggregate, ?Trace $trace = null): Tree
     {
         $directionGraph = $this->graphService->graphToDirection($articulationVertexesAggregate->graph);
 
         if ($articulationVertexesAggregate->articulationVertexes === []) {
+            $trace?->add(StageKind::ArticulationVertexes, 'Точек сочленения нет: кусок двусвязный целиком');
+
             return new Tree(
                 $articulationVertexesAggregate->graph,
                 [$directionGraph],
@@ -30,8 +34,14 @@ readonly class TreeService
         }
 
         $articulationVertexes = $articulationVertexesAggregate->articulationVertexes;
+        $trace?->add(
+            StageKind::ArticulationVertexes,
+            sprintf('Точки сочленения: %s — по ним и режем', implode(', ', $articulationVertexes)),
+            [],
+            $articulationVertexes,
+        );
         $result = [];
-        $this->split($articulationVertexes, new Canvas($articulationVertexesAggregate->graph), $result);
+        $this->split($articulationVertexes, new Canvas($articulationVertexesAggregate->graph), $result, trace: $trace);
         /** @var DirectionGraph[] $branches */
         $branches = array_map(
             fn (array $vertexes) => $this->graphService->createSubGraph($directionGraph, $vertexes),
@@ -62,6 +72,13 @@ readonly class TreeService
             }
         }
 
+        $trace?->add(
+            StageKind::Branches,
+            sprintf('Двусвязных ветвей: %d — вырезаем их по точкам сочленения', count($result)),
+            $result,
+            $articulationVertexesAggregate->articulationVertexes,
+        );
+
         return new Tree($articulationVertexesAggregate->graph, $branches, new DirectionGraph($matrix, $graphVertexes));
     }
 
@@ -73,7 +90,8 @@ readonly class TreeService
         array &$articulationVertex,
         Canvas $canvas,
         array &$result,
-        int $maxColor = 0
+        int $maxColor = 0,
+        ?Trace $trace = null,
     ): bool {
         $color = $maxColor;
         $hasResult = false;
@@ -92,10 +110,10 @@ readonly class TreeService
 
                 $hasResult = true;
                 $this->canvasService->setPixels($canvas, [$vertexA], ++$color);
-                $vertexes = $this->canvasService->fill($canvas, $vertexB, $color);
+                $vertexes = $this->canvasService->fill($canvas, $vertexB, $color, $trace);
                 $vertexes[] = $vertexA;
 
-                if (! $this->split($articulationVertex, $canvas, $result, $color)) {
+                if (! $this->split($articulationVertex, $canvas, $result, $color, $trace)) {
                     $result[] = $vertexes;
                 }
             }

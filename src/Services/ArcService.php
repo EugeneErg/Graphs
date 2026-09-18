@@ -3,12 +3,14 @@
 namespace EugeneErg\Graphs\Services;
 
 use Closure;
+use EugeneErg\Graphs\Aggregates\Trace;
 use EugeneErg\Graphs\ValueObjects\Arc;
 use EugeneErg\Graphs\ValueObjects\Edge;
 use EugeneErg\Graphs\ValueObjects\GravityVertexes;
 use EugeneErg\Graphs\ValueObjects\Replacement;
 use EugeneErg\Graphs\ValueObjects\Solution;
 use EugeneErg\Graphs\ValueObjects\SolutionType;
+use EugeneErg\Graphs\ValueObjects\StageKind;
 use EugeneErg\Graphs\ValueObjects\SubGraph;
 use EugeneErg\Graphs\ValueObjects\Trouble;
 use EugeneErg\Graphs\ValueObjects\TroubleTree;
@@ -21,7 +23,7 @@ final readonly class ArcService
      * @param Edge $outerEdge
      * @return Arc[]
      */
-    public function createArcs(array $edges, Edge $outerEdge): array
+    public function createArcs(array $edges, Edge $outerEdge, ?Trace $trace = null): array
     {
         //var_dump($outerEdge, $edges);die;
         /** @var Arc[] $arcs */
@@ -200,6 +202,11 @@ final readonly class ArcService
                 $graph->edges = array_merge($graph->edges, $nextEdges);
             } while ($found !== 0);
         }
+
+        $trace?->add(
+            StageKind::Order,
+            sprintf('Порядок полей определён: дуг — %d', count($arcs)),
+        );
 
         return $arcs;
     }
@@ -399,7 +406,7 @@ final readonly class ArcService
                 array $vertexes,
                 TroubleTree $tree,
                 ?bool $onRight,
-                TroubleTree $leftParentTree = null
+                ?TroubleTree $leftParentTree = null
             ) use ($leftVertex, &$parents): void {
                 $parentVertex = $leftParentTree === null ? null
                     : $leftParentTree->vertexes[count($leftParentTree->vertexes) - 1];
@@ -527,7 +534,7 @@ final readonly class ArcService
                 $leftPart1 = $leftPart;
                 $leftPart1[] = array_shift($mainVertexes[0]);
                 $mainVertexes = array_merge([$leftPart1], $mainVertexes);
-                $innerEdges = array_diff($solution->trouble->edges, $innerEdges);
+                $innerEdges = $this->excludeEdges($solution->trouble->edges, $innerEdges);
                 $graphs[] = new SubGraph(new Edge(array_merge($leftPart, $leftArc)), $innerEdges);
             } elseif ($solution->toPosition !== null && $solution->toVertex !== $solution->trouble->toVertex) {
                 $tree = $solution->trouble->trees[$solution->toVertex];
@@ -544,7 +551,7 @@ final readonly class ArcService
                 $rightPart1 = $rightPath;
                 array_unshift($rightPart1, array_pop($mainVertexes[count($mainVertexes) - 1]));
                 $mainVertexes = array_merge($mainVertexes, [$rightPart1]);
-                $innerEdges = array_udiff($solution->trouble->edges, $innerEdges, static fn (mixed $a, mixed $b) => $a <> $b);
+                $innerEdges = $this->excludeEdges($solution->trouble->edges, $innerEdges);
                 $graphs[] = new SubGraph(new Edge(array_merge($rightArc, $rightPath)), $innerEdges);
             } else {
                 $newArcs[] = [$solution->trouble->vertexes];
@@ -580,6 +587,23 @@ final readonly class ArcService
     public function getInnerEdges(Trouble $trouble, int $leftVertex, int $rightVertex): array
     {
         return $this->getParentEdges($this->getParentTrees($trouble, $leftVertex, $rightVertex));
+    }
+
+    /**
+     * Рёбра — объекты, поэтому вычитаем их по тождеству экземпляров:
+     * array_diff приводит элементы к строке и падает на объектах.
+     *
+     * @param Edge[] $edges
+     * @param Edge[] $excluded
+     *
+     * @return Edge[]
+     */
+    private function excludeEdges(array $edges, array $excluded): array
+    {
+        return array_values(array_filter(
+            $edges,
+            static fn (Edge $edge): bool => !in_array($edge, $excluded, true),
+        ));
     }
 
     /**

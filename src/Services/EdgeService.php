@@ -6,9 +6,11 @@ namespace EugeneErg\Graphs\Services;
 
 use EugeneErg\Graphs\Aggregates\Canvas;
 use EugeneErg\Graphs\Aggregates\SliceAggregate;
+use EugeneErg\Graphs\Aggregates\Trace;
 use EugeneErg\Graphs\ValueObjects\DirectionGraph;
 use EugeneErg\Graphs\ValueObjects\Edge;
 use EugeneErg\Graphs\ValueObjects\Intersection;
+use EugeneErg\Graphs\ValueObjects\StageKind;
 use EugeneErg\Graphs\ValueObjects\TreeEdge;
 use Exception;
 use LogicException;
@@ -30,6 +32,7 @@ readonly class EdgeService
         DirectionGraph $branch,
         SliceAggregate $slice,
         ?array $outerEdge = null,
+        ?Trace $trace = null,
     ): TreeEdge {
         if (count($branch->getVertexes()) < 4) {
             return new TreeEdge(new Edge($branch->getVertexes()));
@@ -89,6 +92,8 @@ readonly class EdgeService
                     $first = false;
                     $flipPath = array_flip($path);
 
+                    $this->traceField($trace, $path, $needOuter && ! $hasOuter);
+
                     if (! $needOuter || $hasOuter) {
                         if ($innerVertexes === []) {
                             $newEdge = new Edge($path);
@@ -97,7 +102,7 @@ readonly class EdgeService
                             /** @var DirectionGraph $graph */
                             $graph = $this->graphService->createSubGraph($branch, array_merge($path, $innerVertexes));
                             $graph->replaceConnection($this->pathToConnections($path));
-                            $resultChildren[] = $this->splitOnTreeEdges($graph, $slice, $path);
+                            $resultChildren[] = $this->splitOnTreeEdges($graph, $slice, $path, $trace);
                         }
                     } elseif ($outerEdge === []) {
                         $outerEdge = $path;
@@ -127,6 +132,24 @@ readonly class EdgeService
         }
 
         return new TreeEdge(new Edge($outerEdge), $resultChildren);
+    }
+
+    /**
+     * Каждое вырезанное поле — отдельный шаг: видно, как ветвь
+     * распадается на грани.
+     *
+     * @param int[] $path
+     */
+    private function traceField(?Trace $trace, array $path, bool $isOuter): void
+    {
+        $trace?->add(
+            StageKind::Field,
+            $isOuter
+                ? sprintf('Контур ветви: %s', implode(' - ', $path))
+                : sprintf('Вырезаем поле: %s', implode(' - ', $path)),
+            [],
+            $path,
+        );
     }
 
     /**
@@ -288,7 +311,7 @@ readonly class EdgeService
     /**
      * @return int[]
      */
-    public function getPartEdge(Edge $edge, int $offset, int $count = null): array
+    public function getPartEdge(Edge $edge, int $offset, ?int $count = null): array
     {
         $result = [];
         $vertexCount = count($edge->vertexes);

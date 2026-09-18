@@ -7,14 +7,15 @@ namespace Tests;
 use EugeneErg\Graphs\Aggregates\ArticulationVertexesAggregate;
 use EugeneErg\Graphs\Exceptions\InvalidConnectionException;
 use EugeneErg\Graphs\Exceptions\InvalidVertexValueException;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 final class ArticulationVertexesAggregateTest extends AbstractTestCase
 {
     /**
-     * @dataProvider getArticulationVertexesSuccessData
      * @throws InvalidConnectionException
      * @throws InvalidVertexValueException
      */
+    #[DataProvider('getArticulationVertexesSuccessData')]
     public function testGetArticulationVertexesSuccess(array $connections, array $expected): void
     {
         $graph = $this->getGraphService()->createFromConnections($connections);

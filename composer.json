@@ -1,10 +1,11 @@
 {
     "name": "eugene-erg/graphs",
     "type": "project",
-    "description": "Planar graphs",
+    "description": "Planar graphs: планарная укладка графа и её отрисовка в анимированный SVG",
     "license": "MIT",
     "require": {
-        "php": "^8.3"
+        "php": "^8.3",
+        "ext-dom": "*"
     },
     "autoload": {
         "psr-4": {
@@ -20,6 +21,17 @@
         "psr-4": {
             "Tests\\": "tests/"
         }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "stan": "phpstan analyse",
+        "cs": "php-cs-fixer fix --dry-run --diff",
+        "cs:fix": "php-cs-fixer fix",
+        "check": [
+            "@test",
+            "@stan",
+            "@cs"
+        ]
     },
     "config": {
         "optimize-autoloader": true,

@@ -30,7 +30,7 @@ final readonly class Edge
     /**
      * @return int[]
      */
-    public function getVertexes(int $offset = 0, int $count = null): array
+    public function getVertexes(int $offset = 0, ?int $count = null): array
     {
         $result = [];
         $count = $count ?? count($this->vertexes);

@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace EugeneErg\Graphs\Services;
 
 use EugeneErg\Graphs\Aggregates\Canvas;
+use EugeneErg\Graphs\Aggregates\Trace;
 use EugeneErg\Graphs\Exceptions\InvalidConnectionException;
 use EugeneErg\Graphs\Exceptions\InvalidVertexValueException;
 use EugeneErg\Graphs\ValueObjects\DirectionGraph;
 use EugeneErg\Graphs\ValueObjects\Graph;
 use EugeneErg\Graphs\ValueObjects\GraphInterface;
+use EugeneErg\Graphs\ValueObjects\StageKind;
 
 readonly class GraphService
 {
@@ -18,20 +20,33 @@ readonly class GraphService
     ) {
     }
 
+    /**
+     * Направляет связи прочь от корня: обход в ширину снимает обратное ребро
+     * у каждой пройденной связи.
+     */
     public function direct(DirectionGraph $graph, int $vertex): DirectionGraph
     {
-        $parent = null;
         $new = clone $graph;
+        /** @var array<int, int|null> $parents */
+        $parents = [$vertex => null];
+        $queue = [$vertex];
 
-        for ($vertexes = [$vertex => $parent]; $vertex !== null; $vertex = key($vertexes)) {
-            foreach ($graph->getConnection($vertex) ?? [] as $vertexB => $value) {
-                if ($vertexB !== $parent) {
-                    $new->unsetValue($vertexB, $vertex, true);
-                    $vertexes[$vertexB] = $vertex;
+        for ($i = 0; $i < count($queue); $i++) {
+            $current = $queue[$i];
+            $parent = $parents[$current];
+
+            foreach (array_keys($graph->getConnection($current) ?? []) as $next) {
+                if ($next === $parent) {
+                    continue;
+                }
+
+                $new->unsetValue($next, $current, true);
+
+                if (! array_key_exists($next, $parents)) {
+                    $parents[$next] = $current;
+                    $queue[] = $next;
                 }
             }
-
-            $parent = next($vertexes);
         }
 
         return $new;
@@ -78,7 +93,7 @@ readonly class GraphService
     /**
      * @return Graph[]
      */
-    public function splitGraphOnDisconnected(Graph $graph): array
+    public function splitGraphOnDisconnected(Graph $graph, ?Trace $trace = null): array
     {
         if ($graph->getConnections() === []) {
             return [];
@@ -89,10 +104,19 @@ readonly class GraphService
 
         foreach ($graph->vertexes as $vertex) {
             if ($canvas->getPixel($vertex) === 0) {
-                $vertexes = $this->canvasService->fill($canvas, $vertex, 1);
+                // Каждому куску свой цвет, чтобы на картинке они не слились.
+                $vertexes = $this->canvasService->fill($canvas, $vertex, count($operations) + 1, $trace);
                 $operations[] = $vertexes;
             }
         }
+
+        $trace?->add(
+            StageKind::Components,
+            count($operations) === 1
+                ? 'Граф связный: кусок один'
+                : sprintf('Несвязных кусков: %d — разводим по сторонам', count($operations)),
+            $operations,
+        );
 
         if (count($operations) === 1) {
             return [$graph];
@@ -143,51 +167,5 @@ readonly class GraphService
         }
 
         return new DirectionGraph($connections, $graph->vertexes);
-    }
-
-    public function compress(Graph $graph)
-    {
-        $canvas = new Canvas($graph);
-        $resultConnections = $graph->getConnections();
-        $resultVertexes = [];
-        $hash = [];
-
-        foreach ($graph->getConnections() as $vertex => $connections) {
-            count($connections) === 2
-                ? $canvas->setPixel($vertex, 1)
-                : $resultVertexes[] = $vertex;
-        }
-
-        foreach ($graph->vertexes as $vertex) {
-            if ($canvas->getPixel($vertex) === 1) {
-                $groupVertexes = $this->canvasService->fill($canvas, $vertex, 2);
-                $resultVertexes[] = $vertex;
-
-                if (count($groupVertexes) === 1) {
-                    continue;
-                }
-
-                $connectedVertexes = [];
-
-                foreach ($groupVertexes as $vertexA) {
-                    unset($resultConnections[$vertexA]);
-                    $hash[$vertexA] = $graph->getConnection($vertexA);
-
-                    foreach ($hash[$vertexA] as $vertexB => $value) {
-                        unset($resultConnections[$vertexB][$vertexA]);
-
-                        if (isset($connectedVertexes[$vertexB])) {
-                            unset($connectedVertexes[$vertexB]);
-                        } else {
-                            $connectedVertexes[$vertexB] = $value;
-                        }
-                    }
-                }
-
-                foreach ($connectedVertexes as $vertexA => $value) {
-                    $resultConnections[$vertexA][$vertex] = $resultConnections[$vertex][$vertexA] = $value;
-                }
-            }
-        }
     }
 }

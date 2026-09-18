@@ -8,15 +8,15 @@ use EugeneErg\Graphs\Exceptions\InvalidConnectionException;
 use EugeneErg\Graphs\Exceptions\InvalidVertexValueException;
 use EugeneErg\Graphs\ValueObjects\DirectionGraph;
 use EugeneErg\Graphs\ValueObjects\Graph;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 final class GraphServiceTest extends AbstractTestCase
 {
     /**
-     * @dataProvider getDirectData
-     *
      * @throws InvalidConnectionException
      * @throws InvalidVertexValueException
      */
+    #[DataProvider('getDirectData')]
     public function testDirect(DirectionGraph $branch, int $vertex, array $expected): void
     {
         $actual = $this->getGraphService()->direct($branch, $vertex);
@@ -96,12 +96,12 @@ final class GraphServiceTest extends AbstractTestCase
     }
 
     /**
-     * @dataProvider getSplitGraphOnDisconnectedData
      * @param bool[][] $connection
      * @param Graph[] $expectedGraphs
      * @throws InvalidConnectionException
      * @throws InvalidVertexValueException
      */
+    #[DataProvider('getSplitGraphOnDisconnectedData')]
     public function testSplitGraphOnDisconnected(array $connection, array $expectedGraphs): void
     {
         $graphService = $this->getGraphService();

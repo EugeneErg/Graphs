@@ -5,29 +5,53 @@ declare(strict_types=1);
 namespace EugeneErg\Graphs\Services;
 
 use EugeneErg\Graphs\Aggregates\Canvas;
+use EugeneErg\Graphs\Aggregates\Trace;
+use EugeneErg\Graphs\ValueObjects\StageKind;
 
 readonly class CanvasService
 {
     /**
-     * @return int[]
+     * Заливка по связям: начинаем с одной вершины и волна за волной
+     * захватываем соседей того же цвета.
+     *
+     * Каждая волна попадает в журнал отдельным шагом — на картинке видно,
+     * как заливка расползается. Волна из одной вершины, которая никуда
+     * не разошлась, ничего не показывает и в журнал не пишется.
+     *
+     * @return int[] закрашенные вершины в порядке обхода
      */
-    public function fill(Canvas $canvas, int $vertex, int $color): array
+    public function fill(Canvas $canvas, int $vertex, int $color, ?Trace $trace = null): array
     {
         $oldColor = $canvas->getPixel($vertex);
         $canvas->setPixel($vertex, $color);
         $result = [$vertex];
+        $wave = [$vertex];
+        // Снимок холста целиком, а не только этой заливки: иначе на картинке
+        // стирается всё, что закрасили раньше.
+        $steps = [['wave' => $wave, 'pixels' => $canvas->getPixels()]];
 
-        for (
-            $vertex = reset($result);
-            $vertex !== false;
-            $vertex = next($result)
-        ) {
-            foreach ($canvas->graph->getConnection($vertex) ?? [] as $connectionVertex => $value) {
-                if ($canvas->isPixel($connectionVertex, $oldColor)) {
-                    $canvas->setPixel($connectionVertex, $color);
-                    $result[] = $connectionVertex;
+        while ($wave !== []) {
+            $next = [];
+
+            foreach ($wave as $current) {
+                foreach (array_keys($canvas->graph->getConnection($current) ?? []) as $connected) {
+                    if ($canvas->isPixel($connected, $oldColor)) {
+                        $canvas->setPixel($connected, $color);
+                        $next[] = $connected;
+                        $result[] = $connected;
+                    }
                 }
             }
+
+            if ($next !== []) {
+                $steps[] = ['wave' => $next, 'pixels' => $canvas->getPixels()];
+            }
+
+            $wave = $next;
+        }
+
+        if (count($result) > 1) {
+            $this->traceFill($trace, $vertex, $steps);
         }
 
         return $result;
@@ -41,5 +65,47 @@ readonly class CanvasService
         foreach ($vertexes as $vertex) {
             $canvas->setPixel($vertex, $color);
         }
+    }
+
+    /**
+     * @param array<int, array{wave: int[], pixels: array<int, int>}> $steps волны заливки по порядку
+     */
+    private function traceFill(?Trace $trace, int $start, array $steps): void
+    {
+        if ($trace === null) {
+            return;
+        }
+
+        $total = 0;
+
+        foreach ($steps as $number => ['wave' => $wave, 'pixels' => $pixels]) {
+            $total += count($wave);
+            $trace->add(
+                StageKind::Fill,
+                $number === 0
+                    ? sprintf('Заливка: начинаем с вершины %d', $start)
+                    : sprintf('Заливка: шаг %d, закрашено %d', $number, $total),
+                $this->getGroups($pixels),
+                $wave,
+            );
+        }
+    }
+
+    /**
+     * Закрашенное на этот момент, разложенное по цветам.
+     *
+     * @param array<int, int> $pixels
+     *
+     * @return array<int, int[]>
+     */
+    private function getGroups(array $pixels): array
+    {
+        $result = [];
+
+        foreach ($pixels as $vertex => $color) {
+            $result[$color][] = $vertex;
+        }
+
+        return $result;
     }
 }

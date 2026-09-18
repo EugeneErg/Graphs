@@ -15,7 +15,8 @@ class RandomSlice implements SliceInterface
 
     public function getNextValue(int $size): int
     {
-        $result = rand(0, $size);
+        // Позиции нумеруются с нуля: rand(0, $size) давал бы позицию за концом списка.
+        $result = $size < 1 ? 0 : rand(0, $size - 1);
         $this->path[] = $result;
 
         return $result;

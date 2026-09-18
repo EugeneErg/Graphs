@@ -7,9 +7,24 @@ namespace EugeneErg\Graphs\Services;
 use EugeneErg\Graphs\Aggregates\SliceAggregate;
 use EugeneErg\Graphs\ValueObjects\DirectionGraph;
 use EugeneErg\Graphs\ValueObjects\Edge;
-use EugeneErg\Graphs\ValueObjects\Tree;
-use Exception;
 
+/**
+ * Склейка двусвязных ветвей в одну плоскую укладку.
+ *
+ * Ветви соединены между собой точками сочленения. Склейка в такой точке не
+ * просто объединяет два списка граней: ветви связываются друг с другом новыми
+ * рёбрами, и односвязный граф становится двусвязным. Это и есть условие, при
+ * котором его вообще можно уложить: всё, что висит на точке сочленения,
+ * иначе некуда растягивать — оно съезжается в саму точку.
+ *
+ * Добавленные рёбра в рисунок не попадают: рисуется исходный граф, а грани
+ * с этими рёбрами нужны укладке и расслаблению — по ним вершины держат
+ * расстояние. Какие именно грани сшивать, решает срез: это и есть перебор
+ * возможных укладок.
+ *
+ * Проверять число граней по Эйлеру нужно с учётом добавленных рёбер:
+ * их `E − V + 2`, где `E` — рёбра вместе со связками.
+ */
 readonly class VertexService
 {
     public function __construct(private GraphService $graphService, private EdgeService $edgeService)

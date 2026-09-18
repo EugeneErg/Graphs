@@ -5,351 +5,216 @@ declare(strict_types=1);
 namespace Tests;
 
 use EugeneErg\Graphs\Aggregates\SliceAggregate;
-use EugeneErg\Graphs\Exceptions\InvalidConnectionException;
-use EugeneErg\Graphs\Exceptions\InvalidVertexValueException;
+use EugeneErg\Graphs\ValueObjects\DirectionGraph;
 use EugeneErg\Graphs\ValueObjects\Edge;
 use EugeneErg\Graphs\ValueObjects\ZeroSlice;
+use PHPUnit\Framework\Attributes\DataProvider;
 
+/**
+ * Склейка ветвей в точках сочленения.
+ *
+ * Это не просто объединение списков граней: ветви связываются между собой
+ * новыми рёбрами так, что односвязный граф становится двусвязным, а укладка
+ * остаётся плоской. Без этого всё, что висит на точке сочленения, некуда
+ * растягивать — оно схлопывается в саму точку. Добавленные рёбра в рисунок
+ * не попадают: рисуется по-прежнему исходный граф, а грани нужны укладке.
+ */
 final class VertexServiceTest extends AbstractTestCase
 {
     /**
-     * @dataProvider getMergeTreeData
+     * @param Edge[][] $edgeList грани по ветвям
+     * @param int[][] $treeConnections связь ветвей: ветвь => [ветвь => точка сочленения]
+     * @param int[][] $original рёбра исходного графа
+     */
+    #[DataProvider('getMergeTreeData')]
+    public function testMergeTreeTiesBranchesIntoBiconnectedGraph(
+        array $edgeList,
+        array $treeConnections,
+        array $original,
+    ): void {
+        $faces = $this->glue($edgeList, $treeConnections);
+        $usage = self::edgeUsage($faces);
+
+        foreach ($usage as $edge => $count) {
+            self::assertSame(2, $count, sprintf('Ребро %s встречается %d раз вместо двух.', $edge, $count));
+        }
+
+        foreach ($original as [$vertexA, $vertexB]) {
+            self::assertArrayHasKey(
+                self::edgeKey($vertexA, $vertexB),
+                $usage,
+                sprintf('Ребро %d-%d исходного графа потерялось.', $vertexA, $vertexB),
+            );
+        }
+
+        $connections = self::facesToConnections($faces);
+
+        self::assertCount(
+            count($usage) - count($connections) + 2,
+            $faces,
+            'Граней должно быть ровно E − V + 2 — с учётом добавленных рёбер.',
+        );
+        self::assertTrue(
+            self::isBiconnected($connections),
+            'После склейки граф обязан стать двусвязным: на этом держится вся укладка.',
+        );
+    }
+
+    /**
+     * Ветви связываются новыми рёбрами — иначе двусвязным граф бы не стал.
      *
-     * @throws InvalidConnectionException
-     * @throws InvalidVertexValueException
+     * @param Edge[][] $edgeList
+     * @param int[][] $treeConnections
+     * @param int[][] $original
      */
-    public function testMergeTree(array $edgeList, array $graph, array $expected): void
+    #[DataProvider('getMergeTreeData')]
+    public function testMergeTreeAddsTiesBetweenBranches(array $edgeList, array $treeConnections, array $original): void
     {
-        $connections = $this->getGraphService()->graphToDirection($this->getGraphService()->createFromConnections($graph));
+        $added = array_diff_key(
+            self::edgeUsage($this->glue($edgeList, $treeConnections)),
+            array_flip(array_map(static fn (array $edge): string => self::edgeKey($edge[0], $edge[1]), $original)),
+        );
 
-        $actual = $this->getVertexService()->mergeTree($edgeList, $connections, new SliceAggregate(new ZeroSlice()));
-
-        $this->assertEquals($expected, $actual);
+        self::assertNotSame([], $added, 'Ветви должны быть связаны между собой.');
     }
 
     /**
-     * @dataProvider getAddEdgeToMapData
+     * Одиночный цикл ветви и есть вся укладка: делить его не на что.
      */
-    public function testAddEdgeToMap(array $edgeList, array $vertexes, int $offset, array $expected): void
+    public function testMergeTreeKeepsSingleCycleAsOneFace(): void
     {
-        $actual = $this->runPrivateMethod([$this->getVertexService(), 'addEdgeToMap'], $edgeList, $vertexes, $offset);
+        $faces = $this->glue([[new Edge([0, 1, 2])]], []);
 
-        $this->assertEquals($expected, $actual);
+        self::assertSame([[0, 1, 2]], array_map(static fn (Edge $edge): array => $edge->vertexes, $faces));
+    }
+
+    public function testMergeTreeKeepsSeveralFacesOfSingleBranchAsIs(): void
+    {
+        $faces = $this->glue([[new Edge([0, 1, 2]), new Edge([0, 2, 3])]], []);
+
+        self::assertSame([[0, 1, 2], [0, 2, 3]], array_map(static fn (Edge $edge): array => $edge->vertexes, $faces));
     }
 
     /**
-     * @dataProvider getGetEdgeFromWWData
+     * @return array<string, array{Edge[][], int[][], int[][]}>
      */
-    public function testGetEdgeFromWW(array $edgeA, array $edgeB, array $expected): void
-    {
-        $edgeA = new Edge($edgeA);
-        $edgeB = new Edge($edgeB);
-        $vertex = 0;
-
-        $actual = $this->runPrivateMethod([$this->getVertexService(), 'getEdgeFromWW'], $vertex, $edgeA, $edgeB);
-
-        $this->assertEquals($expected, $actual->vertexes);
-    }
-
-    /**
-     * @dataProvider getGetEdgesFromWVData
-     */
-    public function testGetEdgesFromWV(array $edgeA, array $edgeB, array $expected): void
-    {
-        $edgeA = new Edge($edgeA);
-        $edgeB = new Edge($edgeB);
-        $vertex = 0;
-
-        $actual = $this->runPrivateMethod([$this->getVertexService(), 'getEdgesFromWV'], $vertex, $edgeA, $edgeB);
-
-        $this->assertEquals($expected, $actual);
-    }
-
-    /**
-     * @dataProvider getGetEdgesFromVVData
-     */
-    public function testGetEdgesFromVV(array $edgeA, array $edgeB, array $expected): void
-    {
-        $edgeA = new Edge($edgeA);
-        $edgeB = new Edge($edgeB);
-        $vertex = 0;
-
-        $actual = $this->runPrivateMethod([$this->getVertexService(), 'getEdgesFromVV'], $vertex, $edgeA, $edgeB);
-
-        $this->assertEquals($expected, $actual);
-    }
-
-    /**
-     * @dataProvider getDelEdgeFromMapData
-     */
-    public function testDelEdgeFromMap(array $edgeList, int $branch, array $edgeMap, array $expected): void
-    {
-        $this->runPrivateMethod([$this->getVertexService(), 'delEdgeFromMap'], $edgeList, $branch, $edgeMap);
-
-        $this->assertEquals($expected, $edgeMap);
-    }
-
-    /**
-     * @dataProvider getMoveEdgeInMapData
-     */
-    public function testMoveEdgeInMap(int $branch, int $root, int $edgeException, array $edgeMap, array $expected): void
-    {
-        $this->runPrivateMethod([$this->getVertexService(), 'moveEdgeInMap'], $branch, $root, $edgeException, $edgeMap);
-
-        $this->assertEquals($expected, $edgeMap);
-    }
-
     public static function getMergeTreeData(): array
     {
         return [
-            [
+            'два четырёхугольника через общую вершину 0' => [
                 [
                     [new Edge([0, 1, 2, 3])],
                     [new Edge([4, 5, 6, 0])],
                 ],
                 [
-                    0 => [1 => true],
-                    1 => [0 => true],
+                    0 => [1 => 0],
+                    1 => [0 => 0],
+                ],
+                [[0, 1], [1, 2], [2, 3], [3, 0], [4, 5], [5, 6], [6, 0], [0, 4]],
+            ],
+            'три ребра в цепочку' => [
+                [
+                    [new Edge([0, 1])],
+                    [new Edge([1, 2])],
+                    [new Edge([2, 3])],
                 ],
                 [
-                    new Edge([0, 1, 2, 3]),
-                    new Edge([4, 5, 6, 0]),
-                    new Edge([0, 1, 2, 3]),
-                    new Edge([4, 5, 6, 0]),
+                    0 => [1 => 1],
+                    1 => [0 => 1, 2 => 2],
+                    2 => [1 => 2],
                 ],
+                [[0, 1], [1, 2], [2, 3]],
             ],
-        ];
-    }
-
-    public static function getAddEdgeToMapData(): array
-    {
-        return [
-            [
+            'треугольник с подвешенным ребром' => [
                 [
-                    0 => new Edge([1, 2, 3]),
-                    1 => new Edge([5, 6, 7]),
-                ],
-                [2, 7, 8],
-                0,
-                [
-                    2 => [
-                        0 => new Edge([1, 2, 3]),
-                    ],
-                    7 => [
-                        1 => new Edge([5, 6, 7]),
-                    ],
-                ],
-            ],
-        ];
-    }
-
-    public static function getGetEdgeFromWWData(): array
-    {
-        return [
-            [
-                [0, 1, 2, 3, 4],
-                [5, 6, 7, 8, 0],
-                [0, 5, 6, 2, 1],
-            ],
-            [
-                [1, 2, 0, 3, 4],
-                [5, 6, 0, 7, 8],
-                [0, 7, 8, 4, 3],
-            ],
-            [
-
-                [5, 6, 7, 8, 0],
-                [0, 1, 2, 3, 4],
-                [0, 1, 2, 6, 5],
-            ],
-        ];
-    }
-
-    public static function getGetEdgesFromWVData(): array
-    {
-        return [
-            [
-                [0, 1, 2, 3, 4],
-                [5, 6, 7, 8, 0],
-                [new Edge([0, 5, 6, 2, 1]), new Edge([0, 8, 7, 6, 2, 1])],
-            ],
-            [
-                [1, 2, 0, 3, 4],
-                [5, 6, 0, 7, 8],
-                [new Edge([0, 7, 8, 4, 3]), new Edge([0, 6, 5, 8, 4, 3])],
-            ],
-            [
-                [5, 6, 7, 8, 0],
-                [0, 1, 2, 3, 4],
-                [new Edge([0, 1, 2, 6, 5]), new Edge([0, 4, 3, 2, 6, 5])],
-            ],
-        ];
-    }
-
-    public static function getGetEdgesFromVVData(): array
-    {
-        return [
-            [
-                [0, 1, 2, 3, 4],
-                [5, 6, 7, 8, 0],
-                [new Edge([0, 5, 6, 2, 1]), new Edge([0, 8, 7, 6, 2, 3, 4])],
-            ],
-            [
-                [1, 2, 0, 3, 4],
-                [5, 6, 0, 7, 8],
-                [new Edge([0, 7, 8, 4, 3]), new Edge([0, 6, 5, 8, 4, 1, 2])],
-            ],
-            [
-                [5, 6, 7, 8, 0],
-                [0, 1, 2, 3, 4],
-                [new Edge([0, 1, 2, 6, 5]), new Edge([0, 4, 3, 2, 6, 7, 8])],
-            ],
-        ];
-    }
-
-    public static function getDelEdgeFromMapData(): array
-    {
-        return [
-            [
-                [0 => new Edge([1, 2, 3])],
-                0,
-                [
-                    0 => [
-                        1 => [
-                            0 => true,
-                            1 => true,
-                        ],
-                    ],
-                    1 => [
-                        1 => [
-                            0 => true,
-                        ],
-                    ],
+                    [new Edge([0, 1, 2])],
+                    [new Edge([2, 3])],
                 ],
                 [
-                    0 => [
-                        1 => [
-                            1 => true,
-                        ],
-                    ],
-                    1 => [
-                        1 => [
-                            0 => true,
-                        ],
-                    ],
+                    0 => [1 => 2],
+                    1 => [0 => 2],
                 ],
+                [[0, 1], [1, 2], [2, 0], [2, 3]],
             ],
         ];
     }
 
-    public static function getMoveEdgeInMapData(): array
+    /**
+     * @param Edge[][] $edgeList
+     * @param int[][] $treeConnections
+     *
+     * @return Edge[]
+     */
+    private function glue(array $edgeList, array $treeConnections): array
     {
-        return [
-            'Empty edge map' => [
-                'branch' => 1,
-                'root' => 2,
-                'edgeException' => 0,
-                'edgeMap' => [1 => []],
-                'expected' => [],
-            ],
-            'Move edges from branch to root without exceptions' => [
-                'branch' => 1,
-                'root' => 2,
-                'edgeException' => 999, // Edge number that doesn't exist
-                'edgeMap' => [
-                    1 => [
-                        'A' => [
-                            0 => 'edgeA1',
-                            1 => 'edgeA2',
-                        ],
-                        'B' => [
-                            0 => 'edgeB1',
-                        ],
-                    ],
-                ],
-                'expected' => [
-                    2 => [
-                        'A' => [
-                            0 => 'edgeA1',
-                            1 => 'edgeA2',
-                        ],
-                        'B' => [
-                            0 => 'edgeB1',
-                        ],
-                    ],
-                ],
-            ],
-            'Move edges with an exception' => [
-                'branch' => 1,
-                'root' => 2,
-                'edgeException' => 1, // Edge number 1 should be ignored
-                'edgeMap' => [
-                    1 => [
-                        'A' => [
-                            0 => 'edgeA1',
-                            1 => 'edgeA2',
-                            2 => 'edgeA3',
-                        ],
-                        'B' => [
-                            0 => 'edgeB1',
-                        ],
-                    ],
-                ],
-                'expected' => [
-                    1 => [
-                        'A' => [
-                            1 => 'edgeA2', // Only edge 1 should remain
-                        ],
-                    ],
-                    2 => [
-                        'A' => [
-                            0 => 'edgeA1',
-                            2 => 'edgeA3',
-                        ],
-                        'B' => [
-                            0 => 'edgeB1',
-                        ],
-                    ],
-                ],
-            ],
-            'All edges are exceptions' => [
-                'branch' => 1,
-                'root' => 2,
-                'edgeException' => 0, // All edges will be ignored
-                'edgeMap' => [
-                    1 => [
-                        'A' => [
-                            0 => 'edgeA1',
-                        ],
-                    ],
-                ],
-                'expected' => [
-                    1 => [
-                        'A' => [
-                            0 => 'edgeA1',
-                        ],
-                    ],
-                ],
-            ],
-            'Move edges when only one edge is in the map' => [
-                'branch' => 1,
-                'root' => 2,
-                'edgeException' => 999, // No edge should be ignored
-                'edgeMap' => [
-                    1 => [
-                        'A' => [
-                            0 => 'edgeA1',
-                        ],
-                    ],
-                ],
-                'expected' => [
-                    2 => [
-                        'A' => [
-                            0 => 'edgeA1',
-                        ],
-                    ],
-                ],
-            ],
-        ];
+        return $this->getVertexService()->mergeTree(
+            $edgeList,
+            new DirectionGraph($treeConnections, array_keys($treeConnections)),
+            new SliceAggregate(new ZeroSlice()),
+        );
+    }
+
+    /**
+     * Двусвязен ли граф: нет вершины, удаление которой его разрывает.
+     *
+     * @param true[][] $connections
+     */
+    private static function isBiconnected(array $connections): bool
+    {
+        $vertexes = array_keys($connections);
+
+        if (count($vertexes) < 3) {
+            return true;
+        }
+
+        foreach ($vertexes as $skip) {
+            $rest = array_values(array_diff($vertexes, [$skip]));
+            $seen = [$rest[0] => true];
+            $stack = [$rest[0]];
+
+            while ($stack !== []) {
+                $vertex = array_pop($stack);
+
+                foreach (array_keys($connections[$vertex]) as $next) {
+                    if ($next !== $skip && ! isset($seen[$next])) {
+                        $seen[$next] = true;
+                        $stack[] = $next;
+                    }
+                }
+            }
+
+            if (count($seen) !== count($rest)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @param Edge[] $faces
+     *
+     * @return array<string, int>
+     */
+    private static function edgeUsage(array $faces): array
+    {
+        $result = [];
+
+        foreach ($faces as $face) {
+            $vertexes = $face->vertexes;
+            $count = count($vertexes);
+
+            for ($i = 0; $i < $count; $i++) {
+                $key = self::edgeKey($vertexes[$i], $vertexes[($i + 1) % $count]);
+                $result[$key] = ($result[$key] ?? 0) + 1;
+            }
+        }
+
+        return $result;
+    }
+
+    private static function edgeKey(int $vertexA, int $vertexB): string
+    {
+        return min($vertexA, $vertexB) . '-' . max($vertexA, $vertexB);
     }
 }

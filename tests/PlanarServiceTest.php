@@ -4,96 +4,193 @@ declare(strict_types=1);
 
 namespace Tests;
 
+use DOMDocument;
 use EugeneErg\Graphs\Aggregates\SliceAggregate;
 use EugeneErg\Graphs\Exceptions\InvalidConnectionException;
 use EugeneErg\Graphs\Exceptions\InvalidVertexValueException;
-use EugeneErg\Graphs\ValueObjects\Arc;
-use EugeneErg\Graphs\ValueObjects\Edge;
-use EugeneErg\Graphs\ValueObjects\GravityVertexes;
-use EugeneErg\Graphs\ValueObjects\Topology;
+use EugeneErg\Graphs\ValueObjects\Point2D;
 use EugeneErg\Graphs\ValueObjects\ZeroSlice;
+use PHPUnit\Framework\Attributes\DataProvider;
 
+/**
+ * Сквозные проверки: от списка связей до картинки.
+ */
 final class PlanarServiceTest extends AbstractTestCase
 {
     /**
-     * @dataProvider getConnectionsToSwgData
+     * Кадры до распутывания: клубок на окружности, затем начальная догадка.
+     * Всё, что идёт дальше, обязано быть плоским.
+     */
+    private const int FIRST_PLANAR_FRAME = 1;
+
+    /**
+     * @param true[][] $connections
      *
      * @throws InvalidConnectionException
      * @throws InvalidVertexValueException
      */
-    public function testConnectionsToSwg(array $connections, array $expected): void
+    #[DataProvider('getGraphs')]
+    public function testLayoutIsPlanar(array $connections): void
     {
-        $actual = $this->getPlanarService()->connectionsToSvg($connections, new SliceAggregate(new ZeroSlice()));
+        $coordinates = $this->layout($connections);
 
-        $this->assertEquals($expected, $actual);
+        self::assertSame(0, self::countCrossings($connections, $coordinates));
     }
 
-    public static function getConnectionsToSwgData(): array
+    /**
+     * @param true[][] $connections
+     */
+    #[DataProvider('getGraphs')]
+    public function testEveryVertexGetsCoordinates(array $connections): void
+    {
+        $coordinates = $this->layout($connections);
+
+        self::assertSame(array_keys($connections), array_keys($coordinates));
+    }
+
+    /**
+     * Ни одна пара вершин не должна оказаться в одной точке —
+     * иначе рисунок нечитаем при любом масштабе.
+     *
+     * @param true[][] $connections
+     */
+    #[DataProvider('getGraphs')]
+    public function testVertexesDoNotCollide(array $connections): void
+    {
+        $coordinates = $this->layout($connections);
+
+        if (count($coordinates) < 2) {
+            self::assertCount(1, $coordinates);
+
+            return;
+        }
+
+        self::assertGreaterThan(1.0, self::getMinVertexDistance($coordinates));
+    }
+
+    /**
+     * @param true[][] $connections
+     */
+    #[DataProvider('getGraphs')]
+    public function testEveryFrameAfterUntanglingIsPlanar(array $connections): void
+    {
+        $frames = $this->frames($connections);
+
+        self::assertGreaterThan(self::FIRST_PLANAR_FRAME, count($frames));
+
+        foreach (array_slice($frames, self::FIRST_PLANAR_FRAME) as $number => $frame) {
+            self::assertSame(
+                0,
+                self::countCrossings($connections, $frame),
+                sprintf('Кадр %d потерял планарность.', $number + self::FIRST_PLANAR_FRAME),
+            );
+        }
+    }
+
+    /**
+     * Нулевой кадр — тот самый клубок: все вершины на одной окружности.
+     *
+     * @param true[][] $connections
+     */
+    #[DataProvider('getGraphs')]
+    public function testFirstFrameIsCircleOfAllVertexes(array $connections): void
+    {
+        $frames = $this->frames($connections);
+        $geometry = $this->getGeometryService();
+        $center = new Point2D();
+        $distances = array_map(
+            static fn (Point2D $point): float => round($geometry->distance($center, $point), 6),
+            $frames[0],
+        );
+
+        self::assertSame(array_keys($connections), array_keys($frames[0]));
+        self::assertCount(1, array_unique($distances), 'Вершины клубка должны лежать на одной окружности.');
+    }
+
+    /**
+     * @param true[][] $connections
+     */
+    #[DataProvider('getGraphs')]
+    public function testSvgIsValidXml(array $connections): void
+    {
+        $svg = $this->getPlanarService()->connectionsToSvg($connections, new SliceAggregate(new ZeroSlice()));
+        $document = new DOMDocument();
+
+        self::assertTrue($document->loadXML($svg));
+        self::assertSame('svg', $document->documentElement?->tagName);
+    }
+
+    public function testSvgWritesNothingToDisk(): void
+    {
+        $before = glob(getcwd() . '/*.svg');
+
+        $this->getPlanarService()->connectionsToSvg(self::getBig1(), new SliceAggregate(new ZeroSlice()));
+
+        self::assertSame($before, glob(getcwd() . '/*.svg'));
+    }
+
+    public function testDisconnectedComponentsDoNotOverlap(): void
+    {
+        $connections = self::merge(false, self::getSimpleTriangle(), self::getSimpleRectangleCase());
+
+        $coordinates = $this->layout($connections);
+
+        self::assertSame(0, self::countCrossings($connections, $coordinates));
+        self::assertSame(array_keys($connections), array_keys($coordinates));
+        self::assertGreaterThan(1.0, self::getMinVertexDistance($coordinates));
+    }
+
+    public function testLayoutIsDeterministic(): void
+    {
+        $connections = self::getBig1();
+
+        self::assertEquals($this->layout($connections), $this->layout($connections));
+    }
+
+    /**
+     * @return array<string, array{true[][]}>
+     */
+    public static function getGraphs(): array
     {
         return [
-            [
-                self::getBig1(),
-                [
-                    new Topology(
-                        new Edge([0, 6, 12, 18, 17, 11, 5]),
-                        [
-                            new Arc(new GravityVertexes(0, 6, 5), [[5, 4, 3, 2], [1, 7, 6]]),
-                            new Arc(new GravityVertexes(0, 6, 5), [[0, 1]]),
-                            new Arc(new GravityVertexes(6), [[7, 13, 12]]),
-                            new Arc(new GravityVertexes(1), [[2, 8, 7]]),
-                            new Arc(new GravityVertexes(2), [[3, 9, 8]]),
-                            new Arc(new GravityVertexes(3), [[4, 10, 9]]),
-                            new Arc(new GravityVertexes(4), [[11, 10]]),
-                            new Arc(new GravityVertexes(7), [[8, 14, 13]]),
-                            new Arc(new GravityVertexes(12), [[13, 19, 18]]),
-                            new Arc(new GravityVertexes(8), [[9, 15, 14]]),
-                            new Arc(new GravityVertexes(9), [[10, 16, 15]]),
-                            new Arc(new GravityVertexes(10), [[17, 16]]),
-
-                        ],
-                    ),
-                ],
-            ],
-            /*[
-                self::getSmallTree(),
-                [],
-            ],*/
+            'точка' => [self::getDot()],
+            'отрезок' => [self::getLine()],
+            'три ребра' => [self::getThreeLines()],
+            'треугольник' => [self::getSimpleTriangle()],
+            'прямоугольник' => [self::getRectangle()],
+            'треугольник в треугольнике' => [self::getTriangleInTriangle()],
+            'три вложенных треугольника' => [self::getTriangleInTriangleInTriangle()],
+            'дерево с циклом' => [self::getSmallTree()],
+            'большой граф' => [self::getBig1()],
+            'большой с перешейками' => [self::getBig2()],
         ];
+    }
 
-        return [
-            [
-                self::getBig1(),
-                [
-                    [
-                        new Edge([0, 6, 12, 18, 17, 11, 5]),
-                        new Edge([0, 6, 7, 1]),
-                        new Edge([0, 1, 2, 3, 4, 5]),
-                        new Edge([6, 7, 13, 12]),
-                        new Edge([7, 1, 2, 8]),
-                        new Edge([3, 2, 8, 9]),
-                        new Edge([4, 3, 9, 10]),
-                        new Edge([5, 4, 10, 11]),
-                        new Edge([13, 7, 8, 14]),
-                        new Edge([12, 13, 19, 18]),
-                        new Edge([9, 8, 14, 15]),
-                        new Edge([10, 9, 15, 16]),
-                        new Edge([11, 10, 16, 17]),
-                        new Edge([18, 19, 13, 14, 15, 16, 17]),
-                    ],
-                ],
-            ],
-            [
-                self::getSmallTree(),
-                [
-                    [
-                        new Edge([6, 5, 4, 7]),
-                        new Edge([0, 4, 3, 2, 1]),
-                        new Edge([4, 0, 1, 2, 5]),
-                        new Edge([5, 2, 3, 6]),
-                        new Edge([6, 3, 4, 7]),
-                    ],
-                ],
-            ],
-        ];
+    /**
+     * @return true[][]
+     */
+    private static function getSimpleRectangleCase(): array
+    {
+        return self::getRectangle();
+    }
+
+    /**
+     * @param true[][] $connections
+     *
+     * @return Point2D[]
+     */
+    private function layout(array $connections): array
+    {
+        return $this->getPlanarService()->connectionsToCoordinates($connections, new SliceAggregate(new ZeroSlice()));
+    }
+
+    /**
+     * @param true[][] $connections
+     *
+     * @return Point2D[][]
+     */
+    private function frames(array $connections): array
+    {
+        return $this->getPlanarService()->connectionsToFrames($connections, new SliceAggregate(new ZeroSlice()));
     }
 }

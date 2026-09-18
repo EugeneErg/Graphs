@@ -37,7 +37,7 @@ class ArticulationVertexesAggregate
         }
     }
 
-    private function dfs(int $vertexA, int $parentVertex = null): void
+    private function dfs(int $vertexA, ?int $parentVertex = null): void
     {
         $this->number[$vertexA]
             = $this->index[$vertexA]
